@@ -70,3 +70,24 @@ export function decodeToken(token) {
   }
 }
 
+/**
+ * Add a new product (vendor only). Sends multipart/form-data.
+ * @param {FormData} formData - FormData containing productName, categoryId,
+ *   productDescription, productPrice, productStock, and imageFile.
+ * @returns {Promise<Object>} The created product details.
+ */
+export async function addProduct(formData) {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/products/add`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      // NOTE: Do NOT set Content-Type here — browser sets it automatically
+      // with the correct multipart boundary when using FormData.
+    },
+    body: formData,
+  });
+  return handleResponse(response);
+}
+
+

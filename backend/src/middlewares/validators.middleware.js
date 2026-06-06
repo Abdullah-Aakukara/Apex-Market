@@ -1,5 +1,6 @@
 const {body, validationResult} = require('express-validator');
 
+// for /register
 const registerRequestValidator = [
     body('name').isString().withMessage('Please provide your Full Name').escape().trim(), 
     body('email').isEmail().withMessage('Please provide a valid email').trim(), 
@@ -22,7 +23,7 @@ const registerRequestValidator = [
     }
 ]
 
-
+// for /login
 const loginRequestValidator = [
     body('email').isEmail().withMessage('Please provide a valid email').trim(), 
     body('password').isLength({min: 5}).withMessage('Password must be at least 5 characters'), 
@@ -38,7 +39,36 @@ const loginRequestValidator = [
     }
 ]
 
+// for POST /products/add
+const addProductRequestValidator = [
+   body('productName').trim().notEmpty().withMessage("Product name is required"),
+   body('categoryId').isUUID().withMessage("A valid category must be selected"),
+   body('productDescription').trim().escape().notEmpty().withMessage("Description required"),
+   body('productPrice').isNumeric().notEmpty().withMessage("A valid price is required"),
+   body('productStock').isNumeric().notEmpty().withMessage("A valid stock quantity is required"),
+   // custom validation for Image file
+   body('imageFile').custom((value, {req}) => {
+        if (!req.file) {
+            throw new Error("Product Image file required!")
+        }
+        // validate file type
+        const allowedFiles = ['image/jpeg', 'image/png', 'image/webp']
+        if (!allowedFiles.includes(req.file.mimetype)) {
+            throw new Error("Invalid File format ")
+        }
+        return true
+   }), 
+   (req, res, next) => {
+        const result = validationResult(req);
+        if (!result.isEmpty()) {
+            console.error(result.array());
+            return res.status(400).json({
+                error: result.array()
+            })
+        }
+        next();
+   }
+]
 
 
-
-module.exports = {registerRequestValidator, loginRequestValidator};
+module.exports = {registerRequestValidator, loginRequestValidator, addProductRequestValidator};

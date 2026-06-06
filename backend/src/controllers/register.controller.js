@@ -32,6 +32,15 @@ const registerUser = async (req, res) => {
                 doesExist.role = [...doesExist.role, role];
                 // save the user
                 await doesExist.save();
+                // create a vendor account
+                if (role === 'vendor') {
+                    await Vendor.create({
+                        userId: doesExist.toJSON().id,
+                        storeName: storeName,
+                        storeAddress: businessAddress,
+                        phone: phoneNumber
+                    })
+                }
                 return res.status(200).json({
                     message: "You have been successfully registered!",
                     user: doesExist.toJSON()

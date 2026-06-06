@@ -1,7 +1,7 @@
 const jwt = require('jsonwebtoken');
 const path = require('path')
 const bcrypt = require('bcrypt');
-const {User} = require('../models');
+const {User, Vendor} = require('../models');
 require('dotenv').config({ path: path.resolve(__dirname, '../../.env')})
 
 const loginUser = async (req, res) => {
@@ -28,12 +28,32 @@ const loginUser = async (req, res) => {
     }
 
     // if all correct, then issue a jwt token 
-    const payload = {
-        userEmail: email, 
-        userRole: isValidUser.toJSON().role,
-        userName: isValidUser.toJSON().name
-    }
+    let payload = {};
 
+    // check if the user has also Vendor account
+    if (isValidUser.toJSON().role.includes('vendor')){
+        const vendor = await Vendor.findOne({
+            where: {
+                userId: isValidUser.id
+            }
+        })
+
+        payload = {
+        userEmail: email, 
+        userId: isValidUser.id,
+        userRole: isValidUser.toJSON().role,
+        userName: isValidUser.toJSON().name,
+        vendorId: vendor.id
+        }
+    } else {
+        payload = {
+        userEmail: email, 
+        userId: isValidUser.id,
+        userRole: isValidUser.toJSON().role,
+        userName: isValidUser.toJSON().name,
+        }
+    }
+    
     const jwtToken = await jwt.sign(payload, process.env.JWT_SECRET, {
         expiresIn: '15 min'
     })
