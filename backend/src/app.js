@@ -1,15 +1,28 @@
 const express = require('express')
 const authRouter = require('./routes/auth.routes')
-const productRouter = require('./routes/products.routes')
-const app = express();
+const inventoryRouter = require('./routes/inventory.routes')
+const productsRouter = require('./routes/products.routes')
+const checkoutRouter = require('./routes/checkout.routes')
+const handleStripeWebhook = require('./controllers/webhook.controller')
+//const webhookRouter = require('./routes/webhook.routes')
 const cors = require('cors');
+const app = express();
+
+app.post('/webhook', express.raw({ type: 'application/json'}), handleStripeWebhook);
 
 app.use(express.json());
 app.use(cors());
 
 // route all requests to authRouter which starts from /auth
 app.use('/auth', authRouter);
-app.use('/products', productRouter);
 
+// for inventory management
+app.use('/api/vendor', inventoryRouter);
+
+// for customers
+app.use('/api/products', productsRouter);
+ 
+// for checkout
+app.use('/api/checkout', checkoutRouter);
 
 module.exports = app

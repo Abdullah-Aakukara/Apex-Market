@@ -1,7 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { addProduct } from '../utils/api';
+import { addProduct, getProducts } from '../utils/api';
 import './Home.css';
 
 const CATEGORIES = [
@@ -29,6 +29,69 @@ export default function Home() {
   const [formError, setFormError] = useState('');
   const [formSuccess, setFormSuccess] = useState('');
   const [submitting, setSubmitting] = useState(false);
+
+  // Customer marketplace states
+  const [products, setProducts] = useState([]);
+  const [productsLoading, setProductsLoading] = useState(false);
+  const [productsError, setProductsError] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState('');
+  const [sortBy, setSortBy] = useState('');
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  // Fetch products function
+  const fetchProducts = async (categoryVal, sortVal, pageVal) => {
+    try {
+      setProductsLoading(true);
+      setProductsError('');
+      
+      let response;
+      if (!categoryVal) {
+        // Light weight GET api/products (without any query parameters)
+        response = await getProducts();
+      } else {
+        // Specific Category with or without Sort Filter, paginated
+        const params = {
+          category: categoryVal,
+          page: pageVal,
+          limit: 10,
+        };
+        if (sortVal) {
+          params.sortBy = sortVal;
+        }
+        response = await getProducts(params);
+      }
+
+      if (response) {
+        if (categoryVal) {
+          setProducts(response.products || []);
+          setTotalPages(Math.ceil((response.metadata?.totalItems || 0) / 10));
+          setCurrentPage(parseInt(response.metadata?.currentPage || pageVal));
+        } else {
+          setProducts(response.products || []);
+          setTotalPages(1);
+          setCurrentPage(1);
+        }
+      }
+    } catch (err) {
+      console.error(err);
+      setProductsError(err.message || 'Failed to load products.');
+    } finally {
+      setProductsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    if (user && user.role === 'customer') {
+      fetchProducts(selectedCategory, sortBy, currentPage);
+    }
+  }, [user, user?.role]);
+
+  const handlePageChange = (newPage) => {
+    if (newPage < 1 || newPage > totalPages) return;
+    setCurrentPage(newPage);
+    fetchProducts(selectedCategory, sortBy, newPage);
+  };
 
   if (!user) {
     return (
@@ -149,6 +212,15 @@ export default function Home() {
               Switch Role
             </button>
           )}
+          {!isVendor && (
+            <button
+              onClick={() => navigate('/checkout')}
+              className="btn btn-primary"
+              style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem', marginLeft: '0.5rem' }}
+            >
+              🛒 My Cart
+            </button>
+          )}
           <button
             onClick={logout}
             className="btn btn-secondary"
@@ -208,37 +280,143 @@ export default function Home() {
         ) : (
           /* ── Customer Dashboard ─────────────────────────────────────── */
           <>
-            <div className="metrics-grid">
-              <div className="dashboard-card glass-panel">
-                <div className="card-icon">🛍️</div>
-                <div className="card-title">Active Orders</div>
-                <div className="card-value">2</div>
-                <div className="card-trend up">In transit</div>
+            {/* Controls Bar: Category dropdown and price filters */}
+            <div className="marketplace-controls-wrapper">
+              <div className="form-group category-dropdown-group">
+                <label className="form-label" htmlFor="marketplaceCategory">Category</label>
+                <select
+                  id="marketplaceCategory"
+                  name="marketplaceCategory"
+                  className="form-input form-select category-select"
+                  value={selectedCategory}
+                  onChange={(e) => {
+                    const categoryId = e.target.value;
+                    setSelectedCategory(categoryId);
+                    setCurrentPage(1);
+                    fetchProducts(categoryId, sortBy, 1);
+                  }}
+                >
+                  <option value="">All Categories</option>
+                  {CATEGORIES.map(cat => (
+                    <option key={cat.id} value={cat.id}>{cat.label}</option>
+                  ))}
+                </select>
               </div>
-              <div className="dashboard-card glass-panel">
-                <div className="card-icon">💳</div>
-                <div className="card-title">Wallet Balance</div>
-                <div className="card-value">$150.00</div>
-                <div className="card-trend neutral">● Available funds</div>
-              </div>
-              <div className="dashboard-card glass-panel">
-                <div className="card-icon">❤️</div>
-                <div className="card-title">Wishlist Items</div>
-                <div className="card-value">12</div>
-                <div className="card-trend neutral">Ready to checkout</div>
+
+              <div className="filter-buttons-group">
+                <span className="filter-label">Sort by Price</span>
+                <div className="sort-buttons">
+                  <button
+                    onClick={() => {
+                      if (!selectedCategory) return;
+                      const newSort = sortBy === 'price_asc' ? '' : 'price_asc';
+                      setSortBy(newSort);
+                      setCurrentPage(1);
+                      fetchProducts(selectedCategory, newSort, 1);
+                    }}
+                    className={`btn btn-secondary sort-btn ${sortBy === 'price_asc' ? 'active' : ''} ${!selectedCategory ? 'disabled' : ''}`}
+                    disabled={!selectedCategory}
+                    title={!selectedCategory ? "Select a category first to sort" : "Sort lowest to highest"}
+                  >
+                    Lowest Price
+                  </button>
+                  <button
+                    onClick={() => {
+                      if (!selectedCategory) return;
+                      const newSort = sortBy === 'price_desc' ? '' : 'price_desc';
+                      setSortBy(newSort);
+                      setCurrentPage(1);
+                      fetchProducts(selectedCategory, newSort, 1);
+                    }}
+                    className={`btn btn-secondary sort-btn ${sortBy === 'price_desc' ? 'active' : ''} ${!selectedCategory ? 'disabled' : ''}`}
+                    disabled={!selectedCategory}
+                    title={!selectedCategory ? "Select a category first to sort" : "Sort highest to lowest"}
+                  >
+                    Highest Price
+                  </button>
+                </div>
               </div>
             </div>
 
-            <div className="showcase-section">
-              <h3>Discover Products</h3>
-              <p className="showcase-text">
-                Explore thousands of products listed by verified vendors. From electronics to fashion, find everything you need.
-              </p>
-              <div className="action-bar">
-                <button className="btn btn-primary">Browse Marketplace</button>
-                <button className="btn btn-secondary">Track Orders</button>
+            {/* Error state */}
+            {productsError && (
+              <div className="alert alert-error" role="alert" style={{ marginTop: '1rem' }}>
+                {productsError}
               </div>
+            )}
+
+            {/* Product Grid */}
+            <div className="marketplace-products-section">
+              {productsLoading ? (
+                <div className="products-loading-wrapper">
+                  <div className="spinner"></div>
+                  <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>Loading products...</p>
+                </div>
+              ) : products.length === 0 ? (
+                <div className="empty-state glass-panel">
+                  <div className="empty-icon" style={{ fontSize: '3rem', marginBottom: '1rem' }}>🔍</div>
+                  <h3>No products found</h3>
+                  <p style={{ color: 'var(--text-muted)' }}>Try changing your category filter or check back later.</p>
+                </div>
+              ) : (
+                <div className="products-grid">
+                  {products.map((product) => {
+                    const categoryObj = CATEGORIES.find(c => c.id === product.categoryId);
+                    const categoryLabel = categoryObj ? categoryObj.label : 'Product';
+                    const displayImage = product.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80';
+                    return (
+                      <div
+                        key={product.id}
+                        className="product-card glass-panel"
+                        onClick={() => navigate(`/product/${product.id}`)}
+                      >
+                        <div className="product-card-image-wrapper">
+                          <img
+                            src={displayImage}
+                            alt={product.name}
+                            className="product-card-image"
+                          />
+                        </div>
+                        <div className="product-card-info">
+                          <span className={`category-badge cat-${product.categoryId}`}>
+                            {categoryLabel}
+                          </span>
+                          <h4 className="product-card-title">{product.name}</h4>
+                          <div className="product-card-price">
+                            ${parseFloat(product.price).toFixed(2)}
+                          </div>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
             </div>
+
+            {/* Pagination Controls — only shown if category is selected */}
+            {selectedCategory && totalPages > 1 && (
+              <div className="pagination-bar">
+                <button
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage <= 1 || productsLoading}
+                  className="btn btn-secondary pagination-btn"
+                  aria-label="Previous page"
+                >
+                  ‹
+                </button>
+                <span className="pagination-info">
+                  Page {currentPage} of {totalPages}
+                </span>
+                <button
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage >= totalPages || productsLoading}
+                  className="btn btn-secondary pagination-btn"
+                  aria-label="Next page"
+                >
+                  ›
+                </button>
+              </div>
+            )}
           </>
         )}
       </main>

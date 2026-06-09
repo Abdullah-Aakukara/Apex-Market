@@ -5,7 +5,8 @@ import Login from './pages/Login';
 import Register from './pages/Register';
 import Home from './pages/Home';
 import RoleSelection from './pages/RoleSelection';
-
+import ProductDetail from './pages/ProductDetail';
+import Checkout from './pages/Checkout';
 // Protected Route Component: Restricts access to authenticated users only
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -111,6 +112,22 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Home />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/product/:id"
+            element={
+              <ProtectedRoute>
+                <ProductDetail />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/checkout"
+            element={
+              <ProtectedRoute>
+                <Checkout />
               </ProtectedRoute>
             }
           />

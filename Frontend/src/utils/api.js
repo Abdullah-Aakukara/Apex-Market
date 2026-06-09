@@ -78,7 +78,7 @@ export function decodeToken(token) {
  */
 export async function addProduct(formData) {
   const token = localStorage.getItem('token');
-  const response = await fetch(`${API_BASE_URL}/products/add`, {
+  const response = await fetch(`${API_BASE_URL}/api/vendor/products/add`, {
     method: 'POST',
     headers: {
       'Authorization': `Bearer ${token}`,
@@ -90,4 +90,76 @@ export async function addProduct(formData) {
   return handleResponse(response);
 }
 
+/**
+ * Fetch products, optionally filtered, sorted, and paginated
+ * @param {Object} [params] - Optional parameters { category, sortBy, page, limit }
+ */
+export async function getProducts(params = {}) {
+  const token = localStorage.getItem('token');
+  const url = new URL(`${API_BASE_URL}/api/products`);
+  
+  if (params.category) url.searchParams.append('category', params.category);
+  if (params.sortBy) url.searchParams.append('sortBy', params.sortBy);
+  if (params.page) url.searchParams.append('page', params.page);
+  if (params.limit) url.searchParams.append('limit', params.limit);
 
+  const response = await fetch(url.toString(), {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Fetch a single product by ID
+ * @param {string} id - Product ID
+ */
+export async function getProductById(id) {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Checkout order
+ * @param {Object} orderData
+ */
+export async function checkoutOrder(orderData) {
+  const token = localStorage.getItem('token');
+  const decoded = decodeToken(token);
+  const userId = decoded?.userId;
+  
+  const payload = {
+    ...orderData,
+    userId: userId
+  };
+  try {
+    const response = await fetch(`${API_BASE_URL}/api/checkout`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  const result = await handleResponse(response);
+  if (result.success && result.url) {
+      window.location.href = result.url;
+    }
+  } catch(err) {
+    console.error(err)
+       console.error("Checkout processing failed:", err.message);
+      // Display error message to the user (e.g., alert or state-based notification)
+  }
+  
+}
