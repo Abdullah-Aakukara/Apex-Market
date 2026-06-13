@@ -1,4 +1,4 @@
-const API_BASE_URL = 'http://localhost:3000';
+const API_BASE_URL = 'https://apex-market-bchl.onrender.com';
 
 /**
  * Helper to handle fetch responses and extract JSON or error messages.
