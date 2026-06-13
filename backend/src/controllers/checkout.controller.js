@@ -98,13 +98,13 @@ const processCheckout = async (req, res) => {
                 price_data: {
                     currency: 'usd',
                     product_data: { name: 'Customer Order' },
-                    unit_amount: totalAmount * 100,
+                    unit_amount: Math.round(totalAmount * 100),
                 },
                 quantity: 1,
             }],
             mode: 'payment',
-            success_url: 'http://localhost:5173/checkout/success',
-            cancel_url: 'http://localhost:5173/checkout/failure',
+            success_url: 'https://apexvendor.netlify.app/checkout/success',
+            cancel_url: 'https://apexvendor.netlify.app/checkout/failure',
     
             //Put your Order ID here!
             metadata: {
