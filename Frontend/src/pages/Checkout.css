@@ -151,3 +151,42 @@
   padding: 0.75rem;
   font-weight: 600;
 }
+
+/* Cart Quantity Selector Styles */
+.cart-qty-selector {
+  display: inline-flex;
+  align-items: center;
+  margin-top: 0.25rem;
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid var(--border-color);
+  border-radius: 4px;
+  overflow: hidden;
+}
+
+.cart-qty-selector .btn-qty {
+  background: transparent;
+  border: none;
+  color: var(--text-main, #fff);
+  width: 24px;
+  height: 24px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background var(--transition-fast, 0.2s);
+}
+
+.cart-qty-selector .btn-qty:hover {
+  background: rgba(99, 102, 241, 0.2);
+}
+
+.cart-qty-selector .qty-counter {
+  font-size: 0.9rem;
+  font-weight: 700;
+  color: var(--text-main, #fff);
+  padding: 0 0.5rem;
+  min-width: 20px;
+  text-align: center;
+}

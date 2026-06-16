@@ -37,17 +37,46 @@ export default function ProductDetail() {
     }
   }, [id]);
 
-  const handleAddToCart = () => {
+  const [cartQuantity, setCartQuantity] = useState(0);
+
+  useEffect(() => {
+    if (product) {
+      const cart = JSON.parse(localStorage.getItem('cart')) || [];
+      const prodId = product.id || id;
+      const existing = cart.find(item => (item.id || item.productId) === prodId);
+      setCartQuantity(existing ? existing.quantity : 0);
+    }
+  }, [product, id]);
+
+  const updateCartQuantity = (newQty) => {
     const cart = JSON.parse(localStorage.getItem('cart')) || [];
     const prodId = product.id || id;
-    const existing = cart.find(item => (item.id || item.productId) === prodId);
-    if (existing) {
-      existing.quantity += 1;
+    const existingIndex = cart.findIndex(item => (item.id || item.productId) === prodId);
+
+    if (newQty <= 0) {
+      if (existingIndex > -1) {
+        cart.splice(existingIndex, 1);
+      }
+      setCartQuantity(0);
     } else {
-      cart.push({ ...product, id: prodId, quantity: 1 });
+      if (existingIndex > -1) {
+        cart[existingIndex].quantity = newQty;
+      } else {
+        cart.push({ ...product, id: prodId, quantity: newQty });
+      }
+      setCartQuantity(newQty);
     }
     localStorage.setItem('cart', JSON.stringify(cart));
-    
+  };
+
+  const handleAddToCart = () => {
+    if (product.stock <= 0) {
+      setActionMessage(`⚠️ This product is out of stock.`);
+      setMessageType('error');
+      setTimeout(() => setActionMessage(''), 3000);
+      return;
+    }
+    updateCartQuantity(1);
     setActionMessage(`🎉 ${product.name} added to cart!`);
     setMessageType('success');
     setTimeout(() => {
@@ -55,9 +84,24 @@ export default function ProductDetail() {
     }, 3000);
   };
 
+  const handleIncreaseQty = () => {
+    if (cartQuantity >= product.stock) {
+      setActionMessage(`⚠️ Only ${product.stock} items available in stock.`);
+      setMessageType('error');
+      setTimeout(() => setActionMessage(''), 3000);
+      return;
+    }
+    updateCartQuantity(cartQuantity + 1);
+  };
+
+  const handleDecreaseQty = () => {
+    updateCartQuantity(cartQuantity - 1);
+  };
+
   const handleBuyNow = () => {
     const prodId = product.id || id;
-    navigate('/checkout', { state: { product: { ...product, id: prodId, quantity: 1 } } });
+    const buyQty = cartQuantity > 0 ? cartQuantity : 1;
+    navigate('/checkout', { state: { product: { ...product, id: prodId, quantity: buyQty } } });
   };
 
   if (loading) {
@@ -172,15 +216,37 @@ export default function ProductDetail() {
             </div>
 
             <div className="product-actions">
-              <button 
-                onClick={handleAddToCart} 
-                className="btn btn-secondary btn-action"
-              >
-                🛒 Add to Cart
-              </button>
+              {cartQuantity > 0 ? (
+                <div className="quantity-selector">
+                  <button 
+                    onClick={handleDecreaseQty} 
+                    className="btn-qty btn-minus" 
+                    aria-label="Decrease quantity"
+                  >
+                    -
+                  </button>
+                  <span className="qty-counter">{cartQuantity}</span>
+                  <button 
+                    onClick={handleIncreaseQty} 
+                    className="btn-qty btn-plus" 
+                    aria-label="Increase quantity"
+                  >
+                    +
+                  </button>
+                </div>
+              ) : (
+                <button 
+                  onClick={handleAddToCart} 
+                  className="btn btn-secondary btn-action"
+                  disabled={stock <= 0}
+                >
+                  🛒 Add to Cart
+                </button>
+              )}
               <button 
                 onClick={handleBuyNow} 
                 className="btn btn-primary btn-action"
+                disabled={stock <= 0}
               >
                 ⚡ Buy Now
               </button>

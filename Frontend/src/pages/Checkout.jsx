@@ -44,6 +44,31 @@ export default function Checkout() {
     }
   };
 
+  const handleUpdateItemQty = (itemId, newQty, stockLimit) => {
+    if (newQty <= 0) {
+      handleRemoveItem(itemId);
+      return;
+    }
+
+    if (stockLimit !== undefined && newQty > stockLimit) {
+      setError(`⚠️ Only ${stockLimit} items available in stock for this product.`);
+      setTimeout(() => setError(''), 3000);
+      return;
+    }
+
+    const updatedCart = cartItems.map(item => {
+      if ((item.id || item.productId) === itemId) {
+        return { ...item, quantity: newQty };
+      }
+      return item;
+    });
+
+    setCartItems(updatedCart);
+    if (!location.state || !location.state.product) {
+      localStorage.setItem('cart', JSON.stringify(updatedCart));
+    }
+  };
+
   const totalAmount = cartItems.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
 
   const handleInputChange = (e) => {
@@ -153,7 +178,25 @@ export default function Checkout() {
                       <img src={(item.image_urls && item.image_urls.length > 0) ? item.image_urls[0] : (item.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100&auto=format&fit=crop&q=80')} alt={item.name} className="cart-item-img" />
                       <div className="cart-item-info">
                         <h4>{item.name}</h4>
-                        <p>Qty: {item.quantity}</p>
+                        <div className="cart-qty-selector">
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateItemQty(itemId, item.quantity - 1)}
+                            className="btn-qty btn-minus"
+                            aria-label="Decrease quantity"
+                          >
+                            -
+                          </button>
+                          <span className="qty-counter">{item.quantity}</span>
+                          <button
+                            type="button"
+                            onClick={() => handleUpdateItemQty(itemId, item.quantity + 1, item.stock)}
+                            className="btn-qty btn-plus"
+                            aria-label="Increase quantity"
+                          >
+                            +
+                          </button>
+                        </div>
                       </div>
                       <div className="cart-item-actions">
                         <div className="cart-item-price">

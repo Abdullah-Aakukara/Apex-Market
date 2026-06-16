@@ -1,5 +1,4 @@
 const {Product} = require('../models')
-const {Op} = require('sequelize');
 
 const getAllproducts = async (req, res) => {
     try{
@@ -11,10 +10,7 @@ const getAllproducts = async (req, res) => {
             const skip = (page - 1) * limit;
             const {count, rows} = await Product.findAndCountAll({where: {
                     isActive: true, 
-                    categoryId: category,
-                    stock: {
-                        [Op.gt]: 0
-                    }
+                    categoryId: category
                 }, 
                     order: [['price', direction]], // sort by price - lowest to highest 
                     offset: skip, 
@@ -39,11 +35,8 @@ const getAllproducts = async (req, res) => {
             const skip = (page - 1) * limit;
             const {count, rows} = await Product.findAndCountAll({where: {
                     isActive: true, 
-                    categoryId: category,
-                    stock: {
-                        [Op.gt]: 0
-                    }
-                }, 
+                    categoryId: category
+                },
                     offset: skip, 
                     limit: limit 
             })
@@ -84,7 +77,7 @@ const getAllproducts = async (req, res) => {
 const getProductById = async (req, res) => {
     try {
         const productId = req.params.id;
-        const product = await Product.findByPk(productId, {attributes:['name', 'description', 'price', 'image_urls']})
+        const product = await Product.findByPk(productId, {attributes:['name', 'description', 'price', 'image_urls', 'stock']})
         res.status(200).json({
             success: true,
             product: product
