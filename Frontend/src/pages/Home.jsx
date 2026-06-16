@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { addProduct, getProducts, getVendorOrders, getVendorInventory, updateVendorProduct, removeOrRestoreVendorProduct } from '../utils/api';
+import { addProduct, getProducts, getVendorOrders, getVendorInventory, updateVendorProduct, removeOrRestoreVendorProduct, updateVendorOrderStatus } from '../utils/api';
 import './Home.css';
 
 const CATEGORIES = [
@@ -141,6 +141,21 @@ export default function Home() {
       setVendorInventoryError(err.message || 'Failed to load inventory.');
     } finally {
       setVendorInventoryLoading(false);
+    }
+  };
+
+  const handleUpdateStatus = async (orderId) => {
+    try {
+      setActionLoading(orderId);
+      const res = await updateVendorOrderStatus(orderId);
+      if (res && res.success) {
+        setVendorOrders(prev => prev.map(o => o.id === orderId ? { ...o, status: 'shipped' } : o));
+      }
+    } catch (err) {
+      console.error(err);
+      alert(err.message || 'Failed to update order status');
+    } finally {
+      setActionLoading(null);
     }
   };
 
@@ -533,6 +548,13 @@ export default function Home() {
               >
                 📋 Orders to Process
               </button>
+              <button 
+                className={`vendor-tab-btn ${activeTab === 'orders_processed' ? 'active' : ''}`}
+                onClick={() => setActiveTab('orders_processed')}
+                id="vendor-orders-processed-tab"
+              >
+                ✅ Orders Processed
+              </button>
             </div>
 
             {activeTab === 'overview' ? (
@@ -707,7 +729,7 @@ export default function Home() {
                   </div>
                 )}
               </div>
-            ) : (
+            ) : activeTab === 'orders' ? (
 
               /* ── Vendor Orders Tab ────────────────────────────────────── */
               <div className="vendor-orders-section">
@@ -729,7 +751,7 @@ export default function Home() {
                     <div className="spinner"></div>
                     <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>Loading orders...</p>
                   </div>
-                ) : vendorOrders.length === 0 ? (
+                ) : vendorOrders.filter(o => o.status !== 'shipped').length === 0 ? (
                   <div className="empty-state glass-panel">
                     <div className="empty-icon" style={{ fontSize: '3rem', marginBottom: '1rem' }}>📦</div>
                     <h3>No orders to process</h3>
@@ -737,7 +759,7 @@ export default function Home() {
                   </div>
                 ) : (
                   <div className="vendor-orders-list">
-                    {vendorOrders.map((order) => {
+                    {vendorOrders.filter(o => o.status !== 'shipped').map((order) => {
                       const orderDate = new Date(order.createdAt).toLocaleDateString(undefined, {
                         year: 'numeric',
                         month: 'short',
@@ -810,6 +832,142 @@ export default function Home() {
                                 ))}
                               </div>
 
+                              <div className="vendor-order-footer" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginTop: '1rem' }}>
+                                <div>
+                                  <span className="vendor-subtotal-label">Your Earnings: </span>
+                                  <span className="vendor-subtotal-value">${order.vendorSubtotal.toFixed(2)}</span>
+                                </div>
+                                {order.status === 'paid' && order.paymentMethod === 'Stripe' && (
+                                  <button
+                                    onClick={() => handleUpdateStatus(order.id)}
+                                    className="btn btn-primary btn-sm"
+                                    disabled={actionLoading === order.id}
+                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem' }}
+                                  >
+                                    {actionLoading === order.id ? 'Updating...' : 'Product Shipped'}
+                                  </button>
+                                )}
+                                {order.status === 'unpaid' && order.paymentMethod === 'COD' && (
+                                  <button
+                                    onClick={() => handleUpdateStatus(order.id)}
+                                    className="btn btn-primary btn-sm"
+                                    disabled={actionLoading === order.id}
+                                    style={{ padding: '0.4rem 0.8rem', fontSize: '0.85rem', background: 'linear-gradient(135deg, #10b981, #059669)' }}
+                                  >
+                                    {actionLoading === order.id ? 'Updating...' : 'Payment received'}
+                                  </button>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            ) : (
+              /* ── Vendor Orders Processed Tab ──────────────────────────── */
+              <div className="vendor-orders-section">
+                <div className="section-header-row">
+                  <h2>Orders Processed</h2>
+                  <button className="btn btn-secondary btn-sm" onClick={fetchVendorOrders} disabled={vendorOrdersLoading}>
+                    {vendorOrdersLoading ? 'Refreshing...' : '🔄 Refresh Orders'}
+                  </button>
+                </div>
+
+                {vendorOrdersError && (
+                  <div className="alert alert-error" role="alert">
+                    {vendorOrdersError}
+                  </div>
+                )}
+
+                {vendorOrdersLoading ? (
+                  <div className="products-loading-wrapper" style={{ minHeight: '200px', position: 'relative' }}>
+                    <div className="spinner"></div>
+                    <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>Loading orders...</p>
+                  </div>
+                ) : vendorOrders.filter(o => o.status === 'shipped').length === 0 ? (
+                  <div className="empty-state glass-panel">
+                    <div className="empty-icon" style={{ fontSize: '3rem', marginBottom: '1rem' }}>📦</div>
+                    <h3>No processed orders</h3>
+                    <p style={{ color: 'var(--text-muted)' }}>Orders that have been shipped or marked as payment received will show up here.</p>
+                  </div>
+                ) : (
+                  <div className="vendor-orders-list">
+                    {vendorOrders.filter(o => o.status === 'shipped').map((order) => {
+                      const orderDate = new Date(order.createdAt).toLocaleDateString(undefined, {
+                        year: 'numeric',
+                        month: 'short',
+                        day: 'numeric',
+                        hour: '2-digit',
+                        minute: '2-digit'
+                      });
+
+                      return (
+                        <div key={order.id} className="order-panel glass-panel">
+                          {/* Order Summary Header */}
+                          <div className="order-header-main">
+                            <div className="order-meta-info">
+                              <span className="order-id-badge">Order ID: {order.id.slice(0, 8)}...</span>
+                              <span className="order-date-label">{orderDate}</span>
+                            </div>
+                            <div className="order-status-badge-container">
+                              <span className={`status-badge status-${order.status}`}>
+                                {order.status}
+                              </span>
+                              <span className="payment-method-badge">
+                                {order.paymentMethod}
+                              </span>
+                            </div>
+                          </div>
+
+                          <div className="order-body-grid">
+                            {/* Customer and Shipping details */}
+                            <div className="customer-details-card">
+                              <h5>Customer Details</h5>
+                              <p className="cust-info">
+                                <strong>Name:</strong> {order.customerName}<br />
+                                <strong>Email:</strong> {order.customerEmail}
+                              </p>
+
+                              {order.shippingAddress && (
+                                <div className="shipping-address-box">
+                                  <h5>Shipping Address</h5>
+                                  <p className="address-text">
+                                    <strong>{order.shippingAddress.fullName}</strong><br />
+                                    {order.shippingAddress.phone && <>Phone: {order.shippingAddress.phone}<br /></>}
+                                    {order.shippingAddress.addressLine1}<br />
+                                    {order.shippingAddress.addressLine2 && <>{order.shippingAddress.addressLine2}<br /></>}
+                                    {order.shippingAddress.city}, {order.shippingAddress.state} - {order.shippingAddress.postalCode}<br />
+                                    {order.shippingAddress.country}
+                                  </p>
+                                </div>
+                              )}
+                            </div>
+
+                            {/* Items details */}
+                            <div className="items-list-card">
+                              <h5>Items ({order.items.length})</h5>
+                              <div className="order-items-grid">
+                                {order.items.map((item) => (
+                                  <div key={item.id} className="vendor-item-row">
+                                    {item.imageUrl && (
+                                      <img src={item.imageUrl} alt={item.name} className="item-thumbnail" />
+                                    )}
+                                    <div className="item-details">
+                                      <span className="item-name">{item.name}</span>
+                                      <span className="item-qty-price">
+                                        Qty: <strong>{item.quantity}</strong> × ${item.price.toFixed(2)}
+                                      </span>
+                                    </div>
+                                    <div className="item-row-total">
+                                      ${item.total.toFixed(2)}
+                                    </div>
+                                  </div>
+                                ))}
+                              </div>
+
                               <div className="vendor-order-footer">
                                 <span className="vendor-subtotal-label">Your Earnings:</span>
                                 <span className="vendor-subtotal-value">${order.vendorSubtotal.toFixed(2)}</span>
@@ -823,6 +981,7 @@ export default function Home() {
                 )}
               </div>
             )}
+
           </>
         ) : (
           /* ── Customer Dashboard ─────────────────────────────────────── */

@@ -275,4 +275,20 @@ export async function removeOrRestoreVendorProduct(productId, isActive, stock) {
   return handleResponse(response);
 }
 
+/**
+ * Update the status of a vendor order by ID via PATCH
+ * @param {string} orderId 
+ */
+export async function updateVendorOrderStatus(orderId) {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/api/vendor/orders/${orderId}/status`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  return handleResponse(response);
+}
+
 

@@ -34,6 +34,7 @@ module.exports = (sequelize) => {
           'unpaid',
           'paid',        
           'cancelled',
+          'shipped'
         ),
         allowNull: false,
         defaultValue: 'unpaid',

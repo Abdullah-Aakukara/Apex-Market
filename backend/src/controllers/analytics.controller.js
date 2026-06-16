@@ -23,6 +23,9 @@ const getAnalytics = async (req, res) => {
             status: 'unpaid',
             payment_method: 'COD',
           },
+          {
+            status: 'shipped',
+          },
         ],
       },
       include: [
@@ -107,4 +110,20 @@ const getAnalytics = async (req, res) => {
   }
 };
 
-module.exports = getAnalytics;
+const updateOrderStatus = async (req, res) => {
+	const orderId = req.params.id;
+	try {
+		const order = await Order.findByPk(orderId);
+
+		await order.update({status: 'shipped'})
+
+		await order.save();
+
+		res.status(200).json({ success: true})
+	} catch(err) {
+		console.log(err);
+		res.status(500).json({ error: "Internal server error"})
+	}
+}
+
+module.exports = {getAnalytics, updateOrderStatus};
