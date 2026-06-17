@@ -460,7 +460,12 @@ export default function Home() {
     }
   };
 
-  // ── Render ─────────────────────────────────────────────────────────────────
+  // Calculations for dashboard metrics
+  const processedOrders = vendorOrders.filter(o => o.status === 'shipped');
+  const totalRevenue = processedOrders.reduce((acc, o) => acc + (o.vendorSubtotal || 0), 0);
+  const productsSold = processedOrders.reduce((acc, o) => {
+    return acc + (o.items || []).reduce((sum, item) => sum + (item.quantity || 0), 0);
+  }, 0);
 
   return (
     <div className="home-container">
@@ -560,17 +565,17 @@ export default function Home() {
             {activeTab === 'overview' ? (
               <>
                 <div className="metrics-grid">
-                  <div className="dashboard-card glass-panel" onClick={() => setActiveTab('orders')}>
+                  <div className="dashboard-card glass-panel" onClick={() => setActiveTab('orders_processed')}>
                     <div className="card-icon">💰</div>
                     <div className="card-title">Total Revenue</div>
-                    <div className="card-value">$12,450.00</div>
-                    <div className="card-trend up">▲ +12.4% vs last week</div>
+                    <div className="card-value">${totalRevenue.toFixed(2)}</div>
+                    <div className="card-trend neutral">● Processed earnings</div>
                   </div>
-                  <div className="dashboard-card glass-panel" onClick={() => setActiveTab('orders')}>
+                  <div className="dashboard-card glass-panel" onClick={() => setActiveTab('orders_processed')}>
                     <div className="card-icon">📦</div>
                     <div className="card-title">Products Sold</div>
-                    <div className="card-value">342</div>
-                    <div className="card-trend up">▲ +8.2% vs last week</div>
+                    <div className="card-value">{productsSold}</div>
+                    <div className="card-trend neutral">● Dynamic count</div>
                   </div>
                   <div className="dashboard-card glass-panel" onClick={() => setActiveTab('inventory')} id="vendor-listings-card">
                     <div className="card-icon">🏷️</div>
