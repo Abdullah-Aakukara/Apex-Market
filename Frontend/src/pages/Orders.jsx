@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { getOrders, getOrderById } from '../utils/api';
+import { getOrders, getOrderById, submitProductReview } from '../utils/api';
 import './Orders.css';
 
 export default function Orders() {
@@ -16,6 +16,15 @@ export default function Orders() {
   const [selectedOrder, setSelectedOrder] = useState(null);
   const [detailLoading, setDetailLoading] = useState(false);
   const [detailError, setDetailError] = useState('');
+
+  // Review states
+  const [activeReviewProduct, setActiveReviewProduct] = useState(null); // { id: productId, name: productName }
+  const [reviewedProductIds, setReviewedProductIds] = useState(new Set());
+  const [reviewRating, setReviewRating] = useState(5);
+  const [reviewComment, setReviewComment] = useState('');
+  const [reviewSubmitting, setReviewSubmitting] = useState(false);
+  const [reviewError, setReviewError] = useState('');
+  const [reviewSuccess, setReviewSuccess] = useState('');
 
   // Fetch all orders
   const fetchOrders = async () => {
@@ -50,11 +59,71 @@ export default function Orders() {
       const response = await getOrderById(orderId);
       const orderData = response && response.order ? response.order : response;
       setSelectedOrder(orderData);
+
+      // Populate reviewedProductIds from order item reviews
+      const reviewed = new Set();
+      if (orderData && orderData.items) {
+        orderData.items.forEach(item => {
+          const itemId = item.productId || item.product?.id;
+          if (itemId && item.product?.review) {
+            reviewed.add(itemId);
+          }
+        });
+      }
+      setReviewedProductIds(reviewed);
     } catch (err) {
       console.error('Failed to load order detail:', err);
       setDetailError(err.message || 'Failed to load order details.');
     } finally {
       setDetailLoading(false);
+    }
+  };
+
+  // Submit product review
+  const handleReviewSubmit = async (e) => {
+    e.preventDefault();
+    if (!activeReviewProduct) return;
+    
+    if (!reviewRating || reviewRating < 1 || reviewRating > 5) {
+      setReviewError('Please select a rating between 1 and 5 stars.');
+      return;
+    }
+    
+    if (!reviewComment || reviewComment.trim() === '') {
+      setReviewError('Please write a comment for your review.');
+      return;
+    }
+
+    try {
+      setReviewSubmitting(true);
+      setReviewError('');
+      setReviewSuccess('');
+      
+      await submitProductReview(activeReviewProduct.id, {
+        productRating: reviewRating,
+        reviewComment: reviewComment.trim()
+      });
+      
+      setReviewedProductIds(prev => {
+        const next = new Set(prev);
+        next.add(activeReviewProduct.id);
+        return next;
+      });
+      
+      setReviewSuccess('🎉 Review submitted successfully!');
+      setTimeout(() => {
+        // Reset states and close review modal
+        setActiveReviewProduct(null);
+        setReviewRating(5);
+        setReviewComment('');
+        setReviewSuccess('');
+      }, 1500);
+      
+    } catch (err) {
+      console.error('Failed to submit review:', err);
+      setReviewError(err.message || 'Failed to submit review. Please try again.');
+    } finally {
+      setReviewSubmitting(false);
     }
   };
 
@@ -261,22 +330,42 @@ export default function Orders() {
                     const itemName = item.productName || item.product?.name || 'Product';
                     const productImgUrl = (item.product?.image_urls && item.product.image_urls.length > 0) ? item.product.image_urls[0] : item.product?.imageUrl;
                     const itemImage = item.imageUrl || productImgUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100&auto=format&fit=crop&q=80';
+                    const isShipped = (selectedOrder.status || '').toLowerCase() === 'shipped';
+                    const itemId = item.productId || item.product?.id;
+
                     return (
-                      <div key={idx} className="detail-item-card">
-                        <img
-                          src={itemImage}
-                          alt={itemName}
-                          className="detail-item-image"
-                        />
-                        <div className="detail-item-info">
-                          <h4 className="detail-item-name">{itemName}</h4>
-                          <div className="detail-item-pricing">
-                            <span>{formatPrice(item.price)} × {item.quantity}</span>
-                            <span className="detail-item-subtotal">
-                              {formatPrice(parseFloat(item.price) * item.quantity)}
-                            </span>
+                      <div key={idx} className="detail-item-card" style={{ display: 'flex', flexDirection: 'column', gap: '0.75rem', alignItems: 'stretch' }}>
+                        <div style={{ display: 'flex', alignItems: 'center', gap: '1rem' }}>
+                          <img
+                            src={itemImage}
+                            alt={itemName}
+                            className="detail-item-image"
+                          />
+                          <div className="detail-item-info">
+                            <h4 className="detail-item-name">{itemName}</h4>
+                            <div className="detail-item-pricing">
+                              <span>{formatPrice(item.price)} × {item.quantity}</span>
+                              <span className="detail-item-subtotal">
+                                {formatPrice(parseFloat(item.price) * item.quantity)}
+                              </span>
+                            </div>
                           </div>
                         </div>
+                        {isShipped && itemId && !reviewedProductIds.has(itemId) && (
+                          <button
+                            onClick={() => {
+                              setActiveReviewProduct({ id: itemId, name: itemName });
+                              setReviewRating(5);
+                              setReviewComment('');
+                              setReviewError('');
+                              setReviewSuccess('');
+                            }}
+                            className="btn-review"
+                            style={{ alignSelf: 'flex-end' }}
+                          >
+                            ⭐ Review Product
+                          </button>
+                        )}
                       </div>
                     );
                   })}
@@ -290,6 +379,88 @@ export default function Orders() {
                 Close Details
               </button>
             </div>
+          </div>
+        </div>
+      )}
+
+      {/* Review Modal */}
+      {activeReviewProduct && (
+        <div className="detail-modal-overlay" onClick={() => !reviewSubmitting && setActiveReviewProduct(null)}>
+          <div className="review-modal-panel glass-panel" onClick={(e) => e.stopPropagation()}>
+            {/* Modal Header */}
+            <div className="detail-modal-header">
+              <div>
+                <h2 className="detail-modal-title">Write a Review</h2>
+                <p className="detail-modal-subtitle">For {activeReviewProduct.name}</p>
+              </div>
+              <button 
+                className="detail-modal-close" 
+                onClick={() => !reviewSubmitting && setActiveReviewProduct(null)} 
+                aria-label="Close review"
+                disabled={reviewSubmitting}
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <form onSubmit={handleReviewSubmit}>
+              <div className="review-modal-body">
+                {reviewError && <div className="alert alert-error">{reviewError}</div>}
+                {reviewSuccess && <div className="alert alert-success">{reviewSuccess}</div>}
+
+                <div className="form-group">
+                  <label className="form-label" style={{ marginBottom: '0.25rem' }}>Rating</label>
+                  <div className="star-rating-container">
+                    {[1, 2, 3, 4, 5].map((star) => (
+                      <button
+                        key={star}
+                        type="button"
+                        className={`star-rating-btn ${star <= reviewRating ? 'filled' : ''}`}
+                        onClick={() => !reviewSubmitting && setReviewRating(star)}
+                        disabled={reviewSubmitting}
+                        aria-label={`Rate ${star} star${star > 1 ? 's' : ''}`}
+                      >
+                        ★
+                      </button>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="form-group">
+                  <label className="form-label" htmlFor="reviewCommentInput" style={{ marginBottom: '0.5rem' }}>
+                    Your Review
+                  </label>
+                  <textarea
+                    id="reviewCommentInput"
+                    className="review-textarea"
+                    placeholder="Tell us what you think about this product..."
+                    value={reviewComment}
+                    onChange={(e) => setReviewComment(e.target.value)}
+                    disabled={reviewSubmitting}
+                    required
+                  />
+                </div>
+
+                <div className="review-modal-actions">
+                  <button
+                    type="button"
+                    className="btn btn-secondary"
+                    onClick={() => setActiveReviewProduct(null)}
+                    disabled={reviewSubmitting}
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    type="submit"
+                    className="btn btn-primary"
+                    disabled={reviewSubmitting}
+                  >
+                    {reviewSubmitting ? 'Submitting...' : 'Submit Review'}
+                  </button>
+                </div>
+              </div>
+            </form>
           </div>
         </div>
       )}

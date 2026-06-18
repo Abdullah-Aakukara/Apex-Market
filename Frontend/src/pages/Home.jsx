@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { addProduct, getProducts, getVendorOrders, getVendorInventory, updateVendorProduct, removeOrRestoreVendorProduct, updateVendorOrderStatus } from '../utils/api';
+import { addProduct, getProducts, getVendorOrders, getVendorInventory, updateVendorProduct, removeOrRestoreVendorProduct, updateVendorOrderStatus, getWishlist, addWishlistItem, removeWishlistItem } from '../utils/api';
 import './Home.css';
 
 const CATEGORIES = [
@@ -65,6 +65,12 @@ export default function Home() {
   const [sortBy, setSortBy] = useState('');
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
+
+  // Wishlist states
+  const [wishlistProductIds, setWishlistProductIds] = useState(new Set());
+  const [wishlistItems, setWishlistItems] = useState([]);
+  const [showWishlistModal, setShowWishlistModal] = useState(false);
+  const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // Fetch products function
   const fetchProducts = async (categoryVal, sortVal, pageVal) => {
@@ -335,9 +341,89 @@ export default function Home() {
   }, [user, activeTab]);
 
 
+  const fetchWishlist = async () => {
+    try {
+      setWishlistLoading(true);
+      const res = await getWishlist();
+      const items = res?.wishlist || [];
+      setWishlistItems(items);
+      setWishlistProductIds(new Set(items.map(item => item.id)));
+    } catch (err) {
+      console.error("Failed to load wishlist:", err);
+    } finally {
+      setWishlistLoading(false);
+    }
+  };
+
+  const handleWishlistToggle = async (e, productId) => {
+    e.stopPropagation();
+    e.preventDefault();
+    
+    const isWishlisted = wishlistProductIds.has(productId);
+    try {
+      if (isWishlisted) {
+        await removeWishlistItem(productId);
+        setWishlistProductIds(prev => {
+          const next = new Set(prev);
+          next.delete(productId);
+          return next;
+        });
+        setWishlistItems(prev => prev.filter(item => item.id !== productId));
+      } else {
+        await addWishlistItem(productId);
+        setWishlistProductIds(prev => {
+          const next = new Set(prev);
+          next.add(productId);
+          return next;
+        });
+        const product = products.find(p => p.id === productId);
+        if (product) {
+          setWishlistItems(prev => [...prev, product]);
+        } else {
+          fetchWishlist();
+        }
+      }
+    } catch (err) {
+      console.error("Failed to toggle wishlist item:", err);
+      alert(err.message || "Something went wrong.");
+    }
+  };
+
+  const handleAddToWishlistCart = (product) => {
+    if (product.stock <= 0) {
+      alert("This product is out of stock.");
+      return;
+    }
+    const cart = JSON.parse(localStorage.getItem('cart')) || [];
+    const prodId = product.id;
+    const existingIndex = cart.findIndex(item => (item.id || item.productId) === prodId);
+
+    if (existingIndex > -1) {
+      if (cart[existingIndex].quantity < product.stock) {
+        cart[existingIndex].quantity += 1;
+      } else {
+        alert(`Only ${product.stock} items available in stock.`);
+        return;
+      }
+    } else {
+      cart.push({ ...product, id: prodId, quantity: 1 });
+    }
+    localStorage.setItem('cart', JSON.stringify(cart));
+    alert(`🎉 ${product.name} added to cart!`);
+  };
+
+  const handleWishlistBuyNow = (product) => {
+    if (product.stock <= 0) {
+      alert("This product is out of stock.");
+      return;
+    }
+    navigate('/checkout', { state: { product: { ...product, id: product.id, quantity: 1 } } });
+  };
+
   useEffect(() => {
     if (user && user.role === 'customer') {
       fetchProducts(selectedCategory, sortBy, currentPage);
+      fetchWishlist();
     }
   }, [user, user?.role]);
 
@@ -493,6 +579,16 @@ export default function Home() {
           )}
           {!isVendor && (
             <>
+              <button
+                onClick={() => {
+                  fetchWishlist();
+                  setShowWishlistModal(true);
+                }}
+                className="btn btn-secondary"
+                style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', marginLeft: '0.5rem' }}
+              >
+                ❤️ My Wishlist
+              </button>
               <button
                 onClick={() => navigate('/orders')}
                 className="btn btn-secondary"
@@ -1075,12 +1171,21 @@ export default function Home() {
                     const categoryObj = CATEGORIES.find(c => c.id === product.categoryId);
                     const categoryLabel = categoryObj ? categoryObj.label : 'Product';
                     const displayImage = (product.image_urls && product.image_urls.length > 0) ? product.image_urls[0] : (product.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=600&auto=format&fit=crop&q=80');
+                    const isWish = wishlistProductIds.has(product.id);
                     return (
                       <div
                         key={product.id}
                         className="product-card glass-panel"
                         onClick={() => navigate(`/product/${product.id}`)}
+                        style={{ position: 'relative' }}
                       >
+                        <button
+                          className={`wishlist-heart-btn ${isWish ? 'active' : ''}`}
+                          onClick={(e) => handleWishlistToggle(e, product.id)}
+                          aria-label={isWish ? "Remove from wishlist" : "Add to wishlist"}
+                        >
+                          {isWish ? '❤️' : '🤍'}
+                        </button>
                         <div className="product-card-image-wrapper">
                           <img
                             src={displayImage}
@@ -1476,6 +1581,88 @@ export default function Home() {
                 </button>
               </div>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* ── Wishlist Modal ─────────────────────────────────────────────── */}
+      {showWishlistModal && (
+        <div className="modal-overlay" onClick={() => setShowWishlistModal(false)} role="dialog" aria-modal="true" aria-labelledby="wishlist-modal-title">
+          <div className="modal-panel glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
+            
+            {/* Modal Header */}
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title" id="wishlist-modal-title">My Wishlist</h2>
+                <p className="modal-subtitle">Items you've saved for later</p>
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowWishlistModal(false)} aria-label="Close modal">
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            {wishlistLoading ? (
+              <div style={{ textAlign: 'center', padding: '2rem' }}>
+                <div className="spinner"></div>
+                <p style={{ marginTop: '1rem', color: 'var(--text-muted)' }}>Loading wishlist items...</p>
+              </div>
+            ) : wishlistItems.length === 0 ? (
+              <div className="empty-wishlist">
+                <span className="empty-wishlist-icon">❤️</span>
+                <p className="empty-wishlist-text">Your wishlist is empty</p>
+                <p style={{ fontSize: '0.9rem' }}>Browse products and click the heart icon to add items here.</p>
+              </div>
+            ) : (
+              <div className="wishlist-items-list">
+                {wishlistItems.map((product) => {
+                  const displayImage = (product.image_urls && product.image_urls.length > 0) ? product.image_urls[0] : (product.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100&auto=format&fit=crop&q=80');
+                  return (
+                    <div key={product.id} className="wishlist-item-card">
+                      <img src={displayImage} alt={product.name} className="wishlist-item-image" />
+                      <div className="wishlist-item-details">
+                        <h4 className="wishlist-item-name">{product.name}</h4>
+                        <span className="wishlist-item-price">${parseFloat(product.price).toFixed(2)}</span>
+                        <span style={{ fontSize: '0.8rem', color: product.stock > 0 ? '#34d399' : '#f87171', fontWeight: 600 }}>
+                          {product.stock > 0 ? `In Stock: ${product.stock}` : 'Out of Stock'}
+                        </span>
+                      </div>
+                      <div className="wishlist-item-actions">
+                        <button
+                          onClick={() => handleAddToWishlistCart(product)}
+                          className="btn btn-secondary btn-sm"
+                          disabled={product.stock <= 0}
+                        >
+                          Add to Cart
+                        </button>
+                        <button
+                          onClick={() => handleWishlistBuyNow(product)}
+                          className="btn btn-primary btn-sm"
+                          disabled={product.stock <= 0}
+                        >
+                          Buy Now
+                        </button>
+                        <button
+                          onClick={(e) => handleWishlistToggle(e, product.id)}
+                          className="btn-remove-preview"
+                          style={{ position: 'relative', top: 'auto', right: 'auto', width: '28px', height: '28px', fontSize: '0.85rem', flexShrink: 0 }}
+                          title="Remove from wishlist"
+                        >
+                          ✕
+                        </button>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+
+            {/* Modal Footer */}
+            <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
+              <button className="btn btn-secondary" onClick={() => setShowWishlistModal(false)}>
+                Close
+              </button>
+            </div>
           </div>
         </div>
       )}

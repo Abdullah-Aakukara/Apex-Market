@@ -291,4 +291,67 @@ export async function updateVendorOrderStatus(orderId) {
   return handleResponse(response);
 }
 
+/**
+ * Submit a rating and review for a specific product
+ * @param {string} productId 
+ * @param {Object} reviewData - { productRating: number, reviewComment: string }
+ */
+export async function submitProductReview(productId, reviewData) {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/api/reviews/product/${productId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(reviewData),
+  });
+  return handleResponse(response);
+}
 
+/**
+ * Add a product to the user's wishlist
+ * @param {string} productId
+ */
+export async function addWishlistItem(productId) {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/api/wishlist/add/${productId}`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Remove a product from the user's wishlist
+ * @param {string} productId
+ */
+export async function removeWishlistItem(productId) {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/api/wishlist/remove/${productId}`, {
+    method: 'DELETE',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Get all wishlisted products for the user
+ */
+export async function getWishlist() {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/api/wishlist`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  return handleResponse(response);
+}

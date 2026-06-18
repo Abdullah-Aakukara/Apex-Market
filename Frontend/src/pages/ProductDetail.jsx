@@ -1,17 +1,20 @@
 import React, { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { getProductById } from '../utils/api';
+import { getProductById, getWishlist, addWishlistItem, removeWishlistItem } from '../utils/api';
+import { useAuth } from '../context/AuthContext';
 import './ProductDetail.css';
 
 export default function ProductDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const [product, setProduct] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [actionMessage, setActionMessage] = useState('');
   const [messageType, setMessageType] = useState('success');
   const [activeImageIndex, setActiveImageIndex] = useState(0);
+  const [isWishlisted, setIsWishlisted] = useState(false);
 
   useEffect(() => {
     async function fetchProduct() {
@@ -36,6 +39,41 @@ export default function ProductDetail() {
       fetchProduct();
     }
   }, [id]);
+
+  useEffect(() => {
+    async function checkWishlist() {
+      if (user && user.role === 'customer') {
+        try {
+          const res = await getWishlist();
+          const items = res?.wishlist || [];
+          const exists = items.some(item => (item.id || item.productId) === id);
+          setIsWishlisted(exists);
+        } catch (err) {
+          console.error('Failed to fetch wishlist status:', err);
+        }
+      }
+    }
+    checkWishlist();
+  }, [user, id]);
+
+  const handleWishlistToggle = async () => {
+    if (!user) {
+      alert("Please log in to add products to your wishlist.");
+      return;
+    }
+    try {
+      if (isWishlisted) {
+        await removeWishlistItem(id);
+        setIsWishlisted(false);
+      } else {
+        await addWishlistItem(id);
+        setIsWishlisted(true);
+      }
+    } catch (err) {
+      console.error('Failed to toggle wishlist:', err);
+      alert(err.message || 'Something went wrong.');
+    }
+  };
 
   const [cartQuantity, setCartQuantity] = useState(0);
 
@@ -189,9 +227,20 @@ export default function ProductDetail() {
 
           {/* Right: Product Details */}
           <div className="product-detail-info">
-            <div className="product-header">
-              <h1 className="product-title">{name}</h1>
-              <div className="product-price-tag">${parseFloat(price).toFixed(2)}</div>
+            <div className="product-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+              <div style={{ flexGrow: 1 }}>
+                <h1 className="product-title">{name}</h1>
+                <div className="product-price-tag">${parseFloat(price).toFixed(2)}</div>
+              </div>
+              {user && user.role === 'customer' && (
+                <button 
+                  className={`detail-wishlist-btn ${isWishlisted ? 'active' : ''}`}
+                  onClick={handleWishlistToggle}
+                  aria-label={isWishlisted ? "Remove from Wishlist" : "Add to Wishlist"}
+                >
+                  {isWishlisted ? '❤️' : '🤍'}
+                </button>
+              )}
             </div>
 
             <div className="product-divider"></div>

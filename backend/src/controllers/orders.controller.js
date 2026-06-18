@@ -1,4 +1,4 @@
-const {Order, OrderItem, Product, Address} = require('../models');
+const {Order, OrderItem, Product, Address, Reviews} = require('../models');
 
 const getAllOrders = async (req, res) => {
 
@@ -37,6 +37,14 @@ const getOrderById = async (req, res) => {
             'id',
             'name',
             'image_urls'
+          ],
+          include: [
+            {
+              model: Reviews,
+              as: 'review',
+              required: false,
+              where: { user_id: req.user.userId }
+            }
           ]
         }
       ]

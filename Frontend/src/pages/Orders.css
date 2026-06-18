@@ -436,3 +436,98 @@
     padding: 1.25rem;
   }
 }
+
+/* Review Product Button */
+.btn-review {
+  background: transparent;
+  border: 1px solid var(--primary);
+  color: var(--primary);
+  padding: 0.35rem 0.75rem;
+  font-size: 0.8rem;
+  font-weight: 600;
+  border-radius: 4px;
+  cursor: pointer;
+  transition: all var(--transition-fast);
+  align-self: flex-start;
+  margin-top: 0.25rem;
+}
+
+.btn-review:hover {
+  background: var(--primary);
+  color: #fff;
+  box-shadow: 0 0 10px rgba(99, 102, 241, 0.4);
+}
+
+/* Star Rating Selector */
+.star-rating-container {
+  display: flex;
+  gap: 0.5rem;
+  margin: 0.75rem 0;
+  font-size: 2rem;
+}
+
+.star-rating-btn {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  color: rgba(255, 255, 255, 0.2);
+  transition: color 0.15s ease, transform 0.15s ease;
+  padding: 0;
+}
+
+.star-rating-btn:hover {
+  transform: scale(1.15);
+}
+
+.star-rating-btn.filled {
+  color: #fbbf24; /* Amber yellow color */
+  text-shadow: 0 0 8px rgba(251, 191, 36, 0.4);
+}
+
+/* Review Modal Form Styling */
+.review-textarea {
+  width: 100%;
+  min-height: 100px;
+  background: rgba(15, 21, 36, 0.5);
+  border: 1px solid var(--border-color);
+  color: var(--text-main);
+  border-radius: var(--border-radius-sm);
+  padding: 0.75rem;
+  font-family: inherit;
+  font-size: 0.95rem;
+  line-height: 1.5;
+  resize: vertical;
+  transition: border-color 0.2s;
+}
+
+.review-textarea:focus {
+  outline: none;
+  border-color: var(--primary);
+}
+
+.review-modal-panel {
+  max-width: 450px;
+  width: 100%;
+  animation: panelSlideUp 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+
+.review-modal-body {
+  padding: 1.75rem 2rem;
+  display: flex;
+  flex-direction: column;
+  gap: 1.25rem;
+}
+
+.review-modal-actions {
+  display: flex;
+  gap: 1rem;
+  margin-top: 0.5rem;
+}
+
+.review-modal-actions .btn {
+  flex: 1;
+  padding: 0.75rem;
+}

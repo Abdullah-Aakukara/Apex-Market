@@ -9,7 +9,8 @@ const Address = require('./address.model')(sequelize);
 const Order = require('./order.model')(sequelize);
 const OrderItem = require('./orderItem.model')(sequelize);
 const Payment = require('./payment.model')(sequelize);
-
+const Wishlist = require('./wishlist.model')(sequelize);
+const Reviews = require('./reviews.model')(sequelize);
 
 /* Associations */
 
@@ -49,11 +50,21 @@ OrderItem.belongsTo(Product, { foreignKey: 'productId', as: 'product' });
 Order.hasOne(Payment, { foreignKey: 'orderId', as: 'payment' });
 Payment.belongsTo(Order, { foreignKey: 'orderId', as: 'order' });
 
+// User - Reviews 
+User.hasMany(Reviews, { foreignKey: 'user_id', as: 'reviews'});
+Reviews.belongsTo(User, {foreignKey: 'user_id', as: 'user'});
+
+// User - Wishlist
+User.hasMany(Wishlist, {foreignKey: 'user_id', as: 'wishes'});
+Wishlist.belongsTo(User, {foreignKey: 'user_id', as: 'user'});
+
+// Product - Reviews
+Product.hasOne(Reviews, { foreignKey: 'product_id', as: 'review'});
+Reviews.belongsTo(Product, {foreignKey: 'product_id', as: 'product'});
 
 
 const db = {
   sequelize,
-  Sequelize: require('sequelize'),
   User,
   Vendor,
   Otp,
@@ -63,6 +74,8 @@ const db = {
   Order,
   OrderItem,
   Payment,
+  Reviews, 
+  Wishlist
 };
 
 module.exports = db;
