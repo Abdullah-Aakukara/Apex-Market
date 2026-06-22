@@ -1,7 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import { checkoutOrder } from '../utils/api';
+import { checkoutOrder, applyCouponCode } from '../utils/api';
 import './Checkout.css';
 
 const INITIAL_FORM = {
@@ -24,6 +24,14 @@ export default function Checkout() {
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+
+  // Coupon states
+  const [couponCode, setCouponCode] = useState('');
+  const [couponId, setCouponId] = useState(null);
+  const [minCartTotal, setMinCartTotal] = useState(null);
+  const [discountAmount, setDiscountAmount] = useState(0);
+  const [couponError, setCouponError] = useState('');
+  const [couponSuccess, setCouponSuccess] = useState('');
 
   useEffect(() => {
     // Check if we arrived via "Buy Now" with a single product in state
@@ -70,6 +78,45 @@ export default function Checkout() {
   };
 
   const totalAmount = cartItems.reduce((acc, item) => acc + (parseFloat(item.price) * item.quantity), 0);
+  const netAmount = totalAmount - discountAmount;
+
+  const handleApplyCoupon = async () => {
+    if (!couponCode.trim()) return;
+    try {
+      setCouponError('');
+      setCouponSuccess('');
+      const res = await applyCouponCode({ couponCode: couponCode.trim(), cartTotal: totalAmount });
+      if (res && res.success) {
+        setCouponId(res.couponId);
+        setMinCartTotal(parseFloat(res.minCartTotal));
+        setDiscountAmount(parseFloat(res.discountedAmount));
+        setCouponSuccess(`🎉 Discount of $${parseFloat(res.discountedAmount).toFixed(2)} applied successfully!`);
+      }
+    } catch (err) {
+      console.error(err);
+      setCouponError(err.message || 'Failed to apply coupon.');
+    }
+  };
+
+  const handleRemoveCoupon = () => {
+    setCouponId(null);
+    setMinCartTotal(null);
+    setDiscountAmount(0);
+    setCouponCode('');
+    setCouponSuccess('');
+    setCouponError('');
+  };
+
+  // Automatically remove coupon if totalAmount drops below minCartTotal
+  useEffect(() => {
+    if (couponId && minCartTotal !== null) {
+      if (totalAmount < minCartTotal) {
+        handleRemoveCoupon();
+        setError(`⚠️ Coupon removed: Cart total is less than the minimum order amount of $${minCartTotal.toFixed(2)}.`);
+        setTimeout(() => setError(''), 5000);
+      }
+    }
+  }, [totalAmount, couponId, minCartTotal]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -102,6 +149,8 @@ export default function Checkout() {
         ...formData,
         userId: user?.id,
         totalAmount: totalAmount,
+        netAmount: netAmount,
+        couponId: couponId,
         items: cartItems.map(item => ({
           productId: item.id || item.productId, // Handle both id schemas safely
           productName: item.name,
@@ -216,10 +265,60 @@ export default function Checkout() {
                 })}
               </div>
               <div className="checkout-divider"></div>
+              
+              {/* Coupon Section */}
+              <div className="coupon-section">
+                <h3 className="coupon-title">Discount Coupon</h3>
+                {couponError && <div className="alert alert-error coupon-alert">{couponError}</div>}
+                {couponSuccess && <div className="alert alert-success coupon-alert">{couponSuccess}</div>}
+                <div className="coupon-input-group">
+                  <input
+                    type="text"
+                    placeholder="Enter Coupon Code"
+                    value={couponCode}
+                    onChange={(e) => setCouponCode(e.target.value)}
+                    className="coupon-input"
+                    disabled={loading || !!couponId}
+                  />
+                  {couponId ? (
+                    <button
+                      type="button"
+                      onClick={handleRemoveCoupon}
+                      className="btn btn-secondary apply-btn"
+                      disabled={loading}
+                    >
+                      Remove
+                    </button>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={handleApplyCoupon}
+                      className="btn btn-primary apply-btn"
+                      disabled={loading || !couponCode.trim()}
+                    >
+                      Apply
+                    </button>
+                  )}
+                </div>
+              </div>
+
+              <div className="checkout-divider"></div>
               <div className="checkout-total">
                 <span>Total Amount:</span>
                 <span>${totalAmount.toFixed(2)}</span>
               </div>
+              {discountAmount > 0 && (
+                <>
+                  <div className="checkout-total discount-row">
+                    <span>Discount Applied:</span>
+                    <span>-${discountAmount.toFixed(2)}</span>
+                  </div>
+                  <div className="checkout-total net-total-row">
+                    <span>Net Total:</span>
+                    <span>${netAmount.toFixed(2)}</span>
+                  </div>
+                </>
+              )}
             </div>
 
             {/* Right: Checkout Form */}
@@ -289,7 +388,7 @@ export default function Checkout() {
                   disabled={loading}
                   style={{ width: '100%', marginTop: '2rem', padding: '1rem', fontSize: '1.1rem' }}
                 >
-                  {loading ? <span className="spinner"></span> : `Proceed to Payment ($${totalAmount.toFixed(2)})`}
+                  {loading ? <span className="spinner"></span> : `Proceed to Payment ($${netAmount.toFixed(2)})`}
                 </button>
               </form>
             </div>

@@ -40,12 +40,12 @@ module.exports = {
         allowNull: true
       },
       created_at: {
-        type: Sequelize.DATE, // ◄ FIXED: Capitalized to DATE
+        type: Sequelize.DATE, 
         allowNull: false,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       },
       updated_at: {
-        type: Sequelize.DATE, // ◄ FIXED: Capitalized to DATE
+        type: Sequelize.DATE, 
         allowNull: false,
         defaultValue: Sequelize.literal('CURRENT_TIMESTAMP')
       }
@@ -71,7 +71,7 @@ module.exports = {
       },
       user_id: {
         type: Sequelize.UUID,
-        allowNull: true, // Switched to true to match your setup intent
+        allowNull: false, // Switched to true to match your setup intent
         references: {
           model: 'users',
           key: 'id'

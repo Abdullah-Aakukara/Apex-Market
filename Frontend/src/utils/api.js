@@ -355,3 +355,21 @@ export async function getWishlist() {
   });
   return handleResponse(response);
 }
+
+/**
+ * Apply coupon code to receive discount details
+ * @param {Object} couponData - { couponCode: string, cartTotal: number }
+ */
+export async function applyCouponCode(couponData) {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/api/coupons/apply`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(couponData),
+  });
+  return handleResponse(response);
+}
+

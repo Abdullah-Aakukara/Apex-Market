@@ -11,6 +11,8 @@ const OrderItem = require('./orderItem.model')(sequelize);
 const Payment = require('./payment.model')(sequelize);
 const Wishlist = require('./wishlist.model')(sequelize);
 const Reviews = require('./reviews.model')(sequelize);
+const Coupon = require('./coupon.model')(sequelize);
+const CouponUsage = require('./couponUsage.model')(sequelize);
 
 /* Associations */
 
@@ -62,6 +64,9 @@ Wishlist.belongsTo(User, {foreignKey: 'user_id', as: 'user'});
 Product.hasMany(Reviews, { foreignKey: 'product_id', as: 'reviews' });
 Reviews.belongsTo(Product, {foreignKey: 'product_id', as: 'product'});
 
+// User - Coupon 
+User.hasOne(CouponUsage, {foreignKey: 'userId', as: 'couponUsage'});
+CouponUsage.belongsTo(User, {foreignKey: 'userId', as: 'user'});
 
 const db = {
   sequelize,
@@ -75,7 +80,9 @@ const db = {
   OrderItem,
   Payment,
   Reviews, 
-  Wishlist
+  Wishlist,
+  Coupon, 
+  CouponUsage
 };
 
 module.exports = db;

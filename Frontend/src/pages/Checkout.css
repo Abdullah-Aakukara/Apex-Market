@@ -190,3 +190,69 @@
   min-width: 20px;
   text-align: center;
 }
+
+/* Coupon Section Styles */
+.coupon-section {
+  margin-top: 1.5rem;
+  padding: 1.25rem;
+  background: rgba(255, 255, 255, 0.02);
+  border: 1px solid var(--border-color);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.coupon-title {
+  font-size: 1.05rem;
+  font-weight: 700;
+  margin: 0;
+  color: var(--text-default);
+}
+
+.coupon-input-group {
+  display: flex;
+  gap: 0.75rem;
+}
+
+.coupon-input {
+  flex-grow: 1;
+  padding: 0.6rem 0.85rem;
+  font-size: 0.95rem;
+  background: rgba(15, 21, 36, 0.4);
+  border: 1px solid var(--border-color);
+  border-radius: 6px;
+  color: var(--text-default);
+}
+
+.coupon-input:focus {
+  border-color: var(--primary-color);
+  outline: none;
+}
+
+.apply-btn {
+  padding: 0.6rem 1.25rem;
+  font-size: 0.9rem;
+  font-weight: 600;
+  white-space: nowrap;
+}
+
+.coupon-alert {
+  padding: 0.5rem 0.75rem;
+  font-size: 0.85rem;
+  border-radius: 6px;
+}
+
+.discount-row {
+  color: #34d399;
+  font-size: 1.1rem;
+  margin-top: 0.5rem;
+}
+
+.net-total-row {
+  border-top: 1px dashed var(--border-color);
+  padding-top: 0.5rem;
+  margin-top: 0.5rem;
+  font-size: 1.4rem;
+}
+

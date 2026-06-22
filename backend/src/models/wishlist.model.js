@@ -22,7 +22,7 @@ module.exports = (sequelize) => {
     {
         sequelize, 
         modelName: 'Wishlist',
-        tableName: 'wishlist'
+        tableName: 'wishlists'
     })
 
     return Wishlist

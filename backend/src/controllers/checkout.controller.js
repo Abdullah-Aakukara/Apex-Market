@@ -1,10 +1,10 @@
-const { Address, Order, OrderItem, Product, Payment, sequelize } = require('../models');
+const { Address, Order, OrderItem, Product, Coupon, CouponUsage, sequelize} = require('../models');
 const { Op } = require('sequelize');
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 
 const processCheckout = async (req, res) => {
-    const { fullName, address, city, state, postalCode, phoneNumber, userId, totalAmount, paymentMethod, items } = req.body;
+    const { fullName, address, city, state, postalCode, phoneNumber, userId, totalAmount, netAmount, paymentMethod, items, couponId } = req.body;
 
     let quantity = null;
     let orderId = null;
@@ -57,48 +57,60 @@ const processCheckout = async (req, res) => {
                 error.data = outOfStockItems;
                 throw error; // This triggers the rollback immediately
             }
-        
+            
             // 4. Create Unpaid Order
             const userOrder = await Order.create({
                 userId: userId,
                 addressId: userAddress.id,
                 totalAmount: totalAmount,
+                netAmount: netAmount,
                 payment_method: paymentMethod,
                 expiresAt: new Date(Date.now() + (15 * 60 * 1000)) // Explicit Date object for Postgres timestamp
             }, { transaction: t });
 
-            console.log("Order createed:", userOrder.toJSON())
+            console.log("Order created:", userOrder.toJSON())
+            
+            // 5. Record coupon usage
+            if (couponId && typeof(couponId) === 'string') {
+                await CouponUsage.create({
+                    userId: userId, 
+                    couponId: couponId,
+                    orderId: userOrder.id,
+                    usedAt: new Date(Date.now())
+                }, {transaction: t});
+            
+                // increment coupon usage count
+                await Coupon.increment('usedCount', {
+                    by: 1, 
+                    where: {
+                        id: couponId
+                    }
+                }, {transaction: t})
+            }
+            
 
-            // 5. Insert order items
+            // 6. Insert order items
             for (const item of items) {
-                const temp = await OrderItem.create({
+                await OrderItem.create({
                     orderId: userOrder.id,
                     productId: item.productId,
                     quantity: item.quantity,
                     price: item.price
                 }, { transaction: t });
-                console.log("Order ITEM createed:", temp.toJSON())
             }
-            // populate the counter variable for further usage
-            quantity = await OrderItem.count({
-                where: {
-                    orderId: userOrder.id
-                }, 
-                transaction: t
-            })
-
-            // populate the orderId var for furthur usage
+           
+            // populate the orderId var for further usage
             orderId = userOrder.id;
         }); 
 
-        // 6. Create a Stripe checkout session
+        // 7. Create a Stripe checkout session
         const session = await stripe.checkout.sessions.create({
             payment_method_types: ['card'],
             line_items: [{
                 price_data: {
                     currency: 'usd',
                     product_data: { name: 'Customer Order' },
-                    unit_amount: Math.round(totalAmount * 100),
+                    unit_amount: Math.round(netAmount * 100),
                 },
                 quantity: 1,
             }],
@@ -129,8 +141,14 @@ const processCheckout = async (req, res) => {
             });
         }
 
+        if (err.message === 'Validation error') {
+            return res.status(403).json({
+                success: false,
+                message: "Coupon already used by this account."
+            })
+        }
+
         // Handle generic database or server system errors
-        console.error(err);
         return res.status(500).json({
             success: false,
             error: "Internal Server Error !!!"
