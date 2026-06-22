@@ -151,7 +151,7 @@ const processCheckout = async (req, res) => {
         // Handle generic database or server system errors
         return res.status(500).json({
             success: false,
-            error: "Internal Server Error !!!"
+            error: "Internal Server Error !"
         });
     }
 };
