@@ -10,7 +10,7 @@ const sendWelcomeEmail = async (recepientEmail) => {
             text: `Your Account has been registered succussfully, kindly login with your credentials.`
         };
 
-        await transporter.sendMail(mailOptions)
+        await transporter.sendMail(mailOptions);
 }
 
 // Order confirmation email
