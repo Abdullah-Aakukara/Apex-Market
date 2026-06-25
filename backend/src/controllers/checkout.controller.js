@@ -1,6 +1,6 @@
-const { Address, Order, OrderItem, Product, Coupon, CouponUsage, User, sequelize} = require('../models');
+const { Address, Order, OrderItem, Product, Coupon, CouponUsage, User, sequelize, Vendor} = require('../models');
 const { Op } = require('sequelize');
-const {sendOrderConfirmationEmail} = require('../services/email.service')
+const {sendOrderConfirmationEmail, sendOrderArrivedEmail} = require('../services/email.service')
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const processCheckout = async (req, res) => {
@@ -11,7 +11,8 @@ const processCheckout = async (req, res) => {
     try {
         // Track out-of-stock items outside the transaction scope
         let outOfStockItems = [];
-
+        // Vendors' who got the order
+        let vendors = []
         // User email address for mail sending
         const user = await User.findOne({
             where: {
@@ -42,7 +43,7 @@ const processCheckout = async (req, res) => {
                         id: item.productId,
                         stock: { [Op.gte]: item.quantity }
                     }, 
-                    attributes: ['name', 'id', 'stock'],
+                    attributes: ['name', 'id', 'stock', 'vendorId'],
                     transaction: t, 
                     lock: t.LOCK.UPDATE, // Row-level lock prevents race conditions
                 });
@@ -57,6 +58,8 @@ const processCheckout = async (req, res) => {
                 await product.update({
                     stock: product.stock - item.quantity,
                 }, { transaction: t });
+
+                vendors.push(product.vendorId);
             }
 
             // 3. If any items were out of stock, throw a custom error to force a database ROLLBACK
@@ -132,15 +135,46 @@ const processCheckout = async (req, res) => {
             //custom config, for futher usage in webhook
             metadata: {
                 orderId: orderId.toString(),
-                userEmail
+                userEmail,
+                vendors: JSON.stringify(vendors)
             }
         })
         stripeUrl = session.url;
         }
 
-        // send order confirmation email (only for COD orders)
+        // send order confirmation email to customer and new order arrived email to vendor
         if (paymentMethod === 'COD') {
             await sendOrderConfirmationEmail(userEmail, orderId, netAmount, address);
+            
+            // send email to vendors, regarding new order arrived
+            // first clean up the array, removing duplicate ids
+
+            const vendorSet = new Set(vendors);
+            const vendorIds = [...vendorSet]
+
+            // arr of vendor's user ID
+            let vendorUserIds = [] 
+            for (const vendorId of vendorIds) {
+                console.log("got ins")
+                const vendor = await Vendor.findByPk(vendorId, {attributes: ['userId']})
+                vendorUserIds.push(vendor.userId);
+            }         
+            
+            // fetch name & email of all vendors
+            const vendorDetail = await User.findAll({
+                where: {
+                    id: {
+                        [Op.in]: vendorUserIds
+                    }
+                }, attributes: ['email', 'name']
+            })
+            console.log("Vendors found in DB:", vendorDetail);
+            console.log("Number of vendors:", vendorDetail.length);
+    
+            for (const vendor of vendorDetail) {
+                console.log(`Sending email to: ${vendor.email}`);
+                await sendOrderArrivedEmail(vendor.email, vendor.name);
+            }
         }
         
         // If execution reaches here, transaction committed successfully!

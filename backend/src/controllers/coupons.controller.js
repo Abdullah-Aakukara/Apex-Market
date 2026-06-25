@@ -19,7 +19,7 @@ const applyCoupon = async (req, res) => {
 
                 // calculate discount
                 const discountedAmount = (cartTotal * coupon.value) / 100 
-
+                
                 res.status(200).json( {
                     success: true,
                     couponId: coupon.id,

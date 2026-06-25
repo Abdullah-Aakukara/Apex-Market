@@ -4,7 +4,7 @@ const transporter = getEmailTransporter();
 // welcome email 
 const sendWelcomeEmail = async (recepientEmail) => {
     const mailOptions = {
-            from: `Apex Vendor <${process.env.EMAIL_USER}>`,
+            from: `Apex Market <${process.env.EMAIL_USER}>`,
             to: recepientEmail,
             subject: 'Welcome Email from Apex Market',
             text: `Your Account has been registered succussfully, kindly login with your credentials.`
@@ -16,7 +16,7 @@ const sendWelcomeEmail = async (recepientEmail) => {
 // Order confirmation email
 const sendOrderConfirmationEmail = async(recepientEmail, orderId, amount, deliveryAddress = 'your delivery address') => {
     const mailOptions = {
-        from: `Apex Vendor <${process.env.EMAIL_USER}>`,
+        from: `Apex Market <${process.env.EMAIL_USER}>`,
         to: recepientEmail,
         subject: "Your order has been confirmed!",
         text: `Order ${orderId} with amount of ${amount}$ has been successfully confirmed and will be delivered to ${deliveryAddress}`
@@ -25,4 +25,40 @@ const sendOrderConfirmationEmail = async(recepientEmail, orderId, amount, delive
     await transporter.sendMail(mailOptions)
 }
 
-module.exports = {sendWelcomeEmail, sendOrderConfirmationEmail};
+//Order shipped email 
+const sendOrderShippedEmail = async(recepientEmail, orderId, customerName, deliveryAddress) => {
+    const mailOptions = {
+        from: `Apex Market <${process.env.EMAIL_USER}>`,
+        to: recepientEmail, 
+        subject: "Hooray! Your Order has been shipped!",
+        text: `Dear ${customerName || "Customer"}, \n Your Order ${orderId} has been successfully shipped at ${deliveryAddress}. \n Kindly give your honest reviews about the products.`
+    }
+
+    await transporter.sendMail(mailOptions)
+}
+
+// Order cancelled email 
+const sendOrderCancelledEmail = async(recepientEmail, orderId, customerName) => {
+    const mailOptions = {
+        from: `Apex Market <${process.env.EMAIL_USER}>`,
+        to: recepientEmail, 
+        subject: "Order has been Cancelled!",
+        text: `Dear ${customerName || "Customer"}, \n Your recent Order ${orderId} has been cancelled due to delay in payment. You can find more detail in your order history page. \n Thank You,\nApex Market.`
+    }
+
+    await transporter.sendMail(mailOptions)
+}
+
+// New order arrived email (only for vendor)
+const sendOrderArrivedEmail = async(recepientEmail, vendorName) => {
+    const mailOptions = {
+        from: `Apex Market <${process.env.EMAIL_USER}>`,
+        to: recepientEmail, 
+        subject: "Woo-Hoo! New Order Arrived!",
+        text: `Dear ${vendorName || "Vendor"},\n You just got a New Order via Apex Market, you can read order detail in your Orders to Process Dashboard / Vendor Dashboard.\nThank You,\nApex Market.`
+    }
+
+    await transporter.sendMail(mailOptions)
+}
+
+module.exports = {sendWelcomeEmail, sendOrderConfirmationEmail, sendOrderShippedEmail, sendOrderCancelledEmail, sendOrderArrivedEmail};

@@ -1,5 +1,6 @@
 const { Order, OrderItem, Product, Address, User } = require('../models');
 const { Op } = require('sequelize');
+const { sendOrderShippedEmail } = require('../services/email.service');
 
 // Only for displaying orders to process....
 const getAnalytics = async (req, res) => {
@@ -118,6 +119,16 @@ const updateOrderStatus = async (req, res) => {
 		await order.update({status: 'shipped'})
 
 		await order.save();
+
+    // send inform email to customer
+    const customer = await User.findByPk(order.userId)
+    const customerAddress = await Address.findOne({
+      where: {
+        id: customer.id
+      }, attributes: ['addressLine1']
+    });
+
+    await sendOrderShippedEmail(customer.email, orderId, customer.name, customerAddress.addressLine1);
 
 		res.status(200).json({ success: true})
 	} catch(err) {

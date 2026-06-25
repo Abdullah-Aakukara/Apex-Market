@@ -1,5 +1,5 @@
-const { Order, Payment } = require('../models');
-const {sendOrderConfirmationEmail} = require('../services/email.service')
+const { Order, Payment, User} = require('../models');
+const {sendOrderConfirmationEmail, sendOrderArrivedEmail} = require('../services/email.service')
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); 
 
 const handleStripeWebhook = async (req, res) => {
@@ -27,7 +27,8 @@ const handleStripeWebhook = async (req, res) => {
         console.log(`💰 Payment succeeded for session: ${session.id}`);
 
         const orderId = session.metadata.orderId;           // Your internal DB order ID
-        const userEmail = session.metadata.userEmail;
+        const userEmail = session.metadata.userEmail;       // customer email
+        const vendors = JSON.parse(session.metadata.vendors);      // Array of vendor ids 
         const transactionId = session.payment_intent;       // Stripe's unique transaction reference
         const amount = session.amount_total / 100;          // Convert cents to standard format
         const paidAt = new Date(event.created * 1000);      // Convert Unix timestamp to JS Date
@@ -49,7 +50,27 @@ const handleStripeWebhook = async (req, res) => {
           paidAt: paidAt
         });
         console.log(`💳 Payment entry created: ${userPayment.id}`);
+
+        // send order confirmation email to customers
         await sendOrderConfirmationEmail(userEmail, orderId, amount)
+
+        // send email to vendors, regarding new order arrived
+        // first clean up the array, removing duplicate ids
+            const vendorSet = new Set(vendors);
+            const vendorIds = [...vendorSet]
+            
+            // fetch name & email of all vendors
+            const vendorDetail = await User.findAll({
+                where: {
+                    id: {
+                        [Op.in]: vendorIds
+                    }
+                }, attributes: ['email', 'name']
+            })
+
+            for (const vendor of vendorDetail) {
+                await sendOrderArrivedEmail(vendor.email, vendor.name)
+            }
         break;
 
       case 'invoice.payment_failed':

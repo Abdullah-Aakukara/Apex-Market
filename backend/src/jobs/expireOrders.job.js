@@ -1,5 +1,6 @@
-const { Product, Order, OrderItem, sequelize } = require('../models')
+const { Product, Order, OrderItem, User, sequelize } = require('../models')
 const { Op } = require('sequelize')
+const {sendOrderCancelledEmail} = require('../services/email.service');
 
 /**
  * Expire unpaid orders and restore stock after payment timeout
@@ -66,6 +67,9 @@ async function expireOrders() {
       console.log(
         `Order ${order.id} has been Cancelled, due to delay in payment. All the products in the order has been successfully restored.`
       )
+      // inform customer by sending email 
+      //const user = await User.findByPk(order.userId)
+      //await sendOrderCancelledEmail(user.email, order.id, user.name)
     }
 
     await transaction.commit()
