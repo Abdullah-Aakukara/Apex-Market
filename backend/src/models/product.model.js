@@ -40,18 +40,16 @@ module.exports = (sequelize) => {
         defaultValue: [],
         allowNull: true
       },
-      imageUrl: {
-        type: DataTypes.VIRTUAL,
-        get() {
-          const urls = this.getDataValue('image_urls');
-          return urls && urls.length > 0 ? urls[0] : null;
-        }
-      },
       isActive: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: true,
       },
+      lowStockAlertSent: {
+        type: DataTypes.BOOLEAN,
+        allowNull: false,
+        defaultValue: false
+      }
     },
     {
       sequelize,

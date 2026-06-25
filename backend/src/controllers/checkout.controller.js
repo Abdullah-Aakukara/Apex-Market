@@ -1,6 +1,6 @@
 const { Address, Order, OrderItem, Product, Coupon, CouponUsage, User, sequelize, Vendor} = require('../models');
 const { Op } = require('sequelize');
-const {sendOrderConfirmationEmail, sendOrderArrivedEmail} = require('../services/email.service')
+const {sendOrderConfirmationEmail, sendOrderArrivedEmail, sendLowInventoryEmail} = require('../services/email.service')
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 
 const processCheckout = async (req, res) => {
@@ -13,6 +13,8 @@ const processCheckout = async (req, res) => {
         let outOfStockItems = [];
         // Vendors' who got the order
         let vendors = []
+        // for Inventory alert 
+        let inventoryAlert = []
         // User email address for mail sending
         const user = await User.findOne({
             where: {
@@ -59,6 +61,13 @@ const processCheckout = async (req, res) => {
                     stock: product.stock - item.quantity,
                 }, { transaction: t });
 
+                // record products whose stock qty decreases below threshold
+                if(product.stock <= 5 && product.lowStockAlertSent === false) {
+                    inventoryAlert.push({vendorId: product.vendorId, productId: product.id, stock: product.stock})
+                    await product.update({lowStockAlertSent: true}, { transaction: t});
+                }
+
+                // record the vendor id for each specific product
                 vendors.push(product.vendorId);
             }
 
@@ -136,7 +145,8 @@ const processCheckout = async (req, res) => {
             metadata: {
                 orderId: orderId.toString(),
                 userEmail,
-                vendors: JSON.stringify(vendors)
+                vendors: JSON.stringify(vendors),
+                inventoryAlert: JSON.stringify(inventoryAlert)
             }
         })
         stripeUrl = session.url;
@@ -144,7 +154,7 @@ const processCheckout = async (req, res) => {
 
         // send order confirmation email to customer and new order arrived email to vendor
         if (paymentMethod === 'COD') {
-            await sendOrderConfirmationEmail(userEmail, orderId, netAmount, address);
+            //await sendOrderConfirmationEmail(userEmail, orderId, netAmount, address);
             
             // send email to vendors, regarding new order arrived
             // first clean up the array, removing duplicate ids
@@ -152,29 +162,23 @@ const processCheckout = async (req, res) => {
             const vendorSet = new Set(vendors);
             const vendorIds = [...vendorSet]
 
-            // arr of vendor's user ID
-            let vendorUserIds = [] 
             for (const vendorId of vendorIds) {
-                console.log("got ins")
                 const vendor = await Vendor.findByPk(vendorId, {attributes: ['userId']})
-                vendorUserIds.push(vendor.userId);
-            }         
-            
-            // fetch name & email of all vendors
-            const vendorDetail = await User.findAll({
-                where: {
-                    id: {
-                        [Op.in]: vendorUserIds
+
+                // fetch name & email of vendor
+                const vendorDetail = await User.findByPk(vendor.userId, { attributes: ['email', 'name']});
+
+                // send new order arrived email to vendor
+                console.log(`Sending email to: ${vendorDetail.email}`);
+                //await sendOrderArrivedEmail(vendorDetail.email, vendorDetail.name);
+
+                // alert for low inventory only if matched in inventoryAlert arr
+                for (const inventory of inventoryAlert) {
+                    if (inventory.vendorId === vendorId) {
+                        await sendLowInventoryEmail(vendorDetail.email, inventory.productId, inventory.stock, vendorDetail.name)
                     }
-                }, attributes: ['email', 'name']
-            })
-            console.log("Vendors found in DB:", vendorDetail);
-            console.log("Number of vendors:", vendorDetail.length);
-    
-            for (const vendor of vendorDetail) {
-                console.log(`Sending email to: ${vendor.email}`);
-                await sendOrderArrivedEmail(vendor.email, vendor.name);
-            }
+                }
+            }         
         }
         
         // If execution reaches here, transaction committed successfully!
@@ -183,7 +187,6 @@ const processCheckout = async (req, res) => {
             message: "Order initiated successfully",
             url: stripeUrl
         });
-
 
     } catch (err) {
         console.error(err)

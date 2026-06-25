@@ -80,7 +80,10 @@ const updateProduct = async (req, res) => {
         if (name !== undefined) updates.name = name;
         if (description !== undefined) updates.description = description;
         if (price !== undefined && !isNaN(price)) updates.price = parseFloat(price);
-        if (stock !== undefined && !isNaN(stock) && Number(stock) >= 0) updates.stock = parseInt(stock, 10);
+        if (stock !== undefined && !isNaN(stock) && Number(stock) >= 0) {
+            updates.stock = parseInt(stock, 10) 
+            updates.lowStockAlertSent = false   // immediately update the status to false, so that low stock alert can be sent
+        };
         if (categoryId !== undefined) updates.categoryId = categoryId;
         const replacing = isReplacingImages === 'true';
 

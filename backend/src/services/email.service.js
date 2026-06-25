@@ -14,12 +14,12 @@ const sendWelcomeEmail = async (recepientEmail) => {
 }
 
 // Order confirmation email
-const sendOrderConfirmationEmail = async(recepientEmail, orderId, amount, deliveryAddress = 'your delivery address') => {
+const sendOrderConfirmationEmail = async(recepientEmail, orderId, amount, deliveryAddress = 'your delivery address.') => {
     const mailOptions = {
         from: `Apex Market <${process.env.EMAIL_USER}>`,
         to: recepientEmail,
         subject: "Your order has been confirmed!",
-        text: `Order ${orderId} with amount of ${amount}$ has been successfully confirmed and will be delivered to ${deliveryAddress}`
+        text: `Order ${orderId} with amount of $${amount} has been successfully confirmed and will be delivered to ${deliveryAddress}`
     }
 
     await transporter.sendMail(mailOptions)
@@ -55,10 +55,22 @@ const sendOrderArrivedEmail = async(recepientEmail, vendorName) => {
         from: `Apex Market <${process.env.EMAIL_USER}>`,
         to: recepientEmail, 
         subject: "Woo-Hoo! New Order Arrived!",
-        text: `Dear ${vendorName || "Vendor"},\n You just got a New Order via Apex Market, you can read order detail in your Orders to Process Dashboard / Vendor Dashboard.\nThank You,\nApex Market.`
+        text: `Dear ${vendorName || "Vendor"},\nYou just got a New Order via Apex Market, you can read order detail in your Orders to Process Dashboard / Vendor Dashboard.\nThank You,\nApex Market.`
     }
 
     await transporter.sendMail(mailOptions)
 }
 
-module.exports = {sendWelcomeEmail, sendOrderConfirmationEmail, sendOrderShippedEmail, sendOrderCancelledEmail, sendOrderArrivedEmail};
+// Low inventory (below threshold) alert email
+const sendLowInventoryEmail = async (recipientEmail, productId, stock, vendorName) => {
+    const mailOptions = {
+        from: `Apex Market <${process.env.EMAIL_USER}>`,
+        to: recipientEmail, 
+        subject: "ALERT! INVENTORY BELOW THRESHOLD",
+        text: `Dear ${vendorName || "Vendor"},\nYour Product (ID - ${productId}) listed on Apex Market, its stock quantity has decreased below the minimun threshold, kindly view that product in your Vendor Dashboard and replenish it.\n\nThank You,\nApex Market.`
+    }
+
+    await transporter.sendMail(mailOptions)
+}
+
+module.exports = {sendWelcomeEmail, sendOrderConfirmationEmail, sendOrderShippedEmail, sendOrderCancelledEmail, sendOrderArrivedEmail, sendLowInventoryEmail};

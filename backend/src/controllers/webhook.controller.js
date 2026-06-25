@@ -1,5 +1,5 @@
-const { Order, Payment, User} = require('../models');
-const {sendOrderConfirmationEmail, sendOrderArrivedEmail} = require('../services/email.service')
+const { Order, Payment, User, Vendor} = require('../models');
+const {sendOrderConfirmationEmail, sendOrderArrivedEmail, sendLowInventoryEmail} = require('../services/email.service')
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY); 
 
 const handleStripeWebhook = async (req, res) => {
@@ -29,6 +29,7 @@ const handleStripeWebhook = async (req, res) => {
         const orderId = session.metadata.orderId;           // Your internal DB order ID
         const userEmail = session.metadata.userEmail;       // customer email
         const vendors = JSON.parse(session.metadata.vendors);      // Array of vendor ids 
+        const inventoryAlert = JSON.parse(session.metadata.inventoryAlert);      // Array of obj with vendorID, productId and Stock to alert vendors whose product stock is below minimum threshold
         const transactionId = session.payment_intent;       // Stripe's unique transaction reference
         const amount = session.amount_total / 100;          // Convert cents to standard format
         const paidAt = new Date(event.created * 1000);      // Convert Unix timestamp to JS Date
@@ -51,25 +52,25 @@ const handleStripeWebhook = async (req, res) => {
         });
         console.log(`💳 Payment entry created: ${userPayment.id}`);
 
-        // send order confirmation email to customers
+        // send order confirmation email to customer
         await sendOrderConfirmationEmail(userEmail, orderId, amount)
 
-        // send email to vendors, regarding new order arrived
+        // send email to vendors, regarding new order arrived 
         // first clean up the array, removing duplicate ids
             const vendorSet = new Set(vendors);
             const vendorIds = [...vendorSet]
             
-            // fetch name & email of all vendors
-            const vendorDetail = await User.findAll({
-                where: {
-                    id: {
-                        [Op.in]: vendorIds
-                    }
-                }, attributes: ['email', 'name']
-            })
+            for (const vendorId of vendorIds) {
+              const vendor = await Vendor.findByPk(vendorId, {attributes: ['userId']})
+              const vendorDetail = await User.findByPk(vendor.userID, {attributes: ['name', 'email']})
+              await sendOrderArrivedEmail(vendorDetail.email, vendorDetail.name);
 
-            for (const vendor of vendorDetail) {
-                await sendOrderArrivedEmail(vendor.email, vendor.name)
+              // send inventory alert email to vendors whose id gets matched with inventoryAlert arr
+              for (const inventory of inventoryAlert) {
+                if (inventory.vendorId === vendorId) {
+                  await sendLowInventoryEmail(vendorDetail.email, inventory.productId, inventory.stock, vendorDetail.name)
+                }
+              }
             }
         break;
 
