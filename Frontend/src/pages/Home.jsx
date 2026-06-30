@@ -41,6 +41,7 @@ export default function Home() {
   const [vendorInventoryLoading, setVendorInventoryLoading] = useState(false);
   const [vendorInventoryError, setVendorInventoryError] = useState('');
   const [showEditModal, setShowEditModal] = useState(false);
+  const [showLowStockModal, setShowLowStockModal] = useState(false);
   const [editFormData, setEditFormData] = useState({
     productId: '',
     productName: '',
@@ -606,6 +607,14 @@ export default function Home() {
             </>
           )}
           <button
+            onClick={() => navigate('/profile')}
+            className="btn btn-secondary"
+            style={{ padding: '0.5rem 1rem', fontSize: '0.85rem', marginRight: '0.5rem' }}
+            title="Profile & Settings"
+          >
+            ⚙️ Settings
+          </button>
+          <button
             onClick={logout}
             className="btn btn-secondary"
             style={{ padding: '0.5rem 1rem', fontSize: '0.85rem' }}
@@ -699,7 +708,17 @@ export default function Home() {
               <div className="vendor-inventory-section">
                 <div className="section-header-row">
                   <h2>Product Inventory</h2>
-                  <div className="action-buttons-header">
+                  <div className="action-buttons-header" style={{ display: 'flex', alignItems: 'center', gap: '0.75rem' }}>
+                    {vendorInventory.filter(p => p.isActive && p.stock <= 5).length > 0 && (
+                      <button 
+                        onClick={() => setShowLowStockModal(true)}
+                        className="low-stock-bell-btn blinking-red"
+                        title={`${vendorInventory.filter(p => p.isActive && p.stock <= 5).length} items are low on stock!`}
+                        type="button"
+                      >
+                        🔔 <span className="bell-badge">{vendorInventory.filter(p => p.isActive && p.stock <= 5).length}</span>
+                      </button>
+                    )}
                     <button className="btn btn-primary btn-sm" onClick={handleOpenModal} id="add-product-btn-inv">
                       + Add New Product
                     </button>
@@ -1660,6 +1679,59 @@ export default function Home() {
             {/* Modal Footer */}
             <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
               <button className="btn btn-secondary" onClick={() => setShowWishlistModal(false)}>
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* ── Low Stock Alert Modal ─────────────────────────────────────────────── */}
+      {showLowStockModal && (
+        <div className="modal-overlay" onClick={() => setShowLowStockModal(false)} role="dialog" aria-modal="true" aria-labelledby="low-stock-modal-title">
+          <div className="modal-panel glass-panel" onClick={e => e.stopPropagation()} style={{ maxWidth: '550px' }}>
+            
+            {/* Modal Header */}
+            <div className="modal-header">
+              <div>
+                <h2 className="modal-title" id="low-stock-modal-title" style={{ color: '#ef4444' }}>⚠️ Low Stock Alert</h2>
+                <p className="modal-subtitle">The following products have stock quantity ≤ 5</p>
+              </div>
+              <button className="modal-close-btn" onClick={() => setShowLowStockModal(false)} aria-label="Close modal">
+                ✕
+              </button>
+            </div>
+
+            {/* Modal Body */}
+            <div className="wishlist-items-list" style={{ maxHeight: '50vh', overflowY: 'auto' }}>
+              {vendorInventory.filter(p => p.isActive && p.stock <= 5).map((product) => {
+                const displayImage = (product.image_urls && product.image_urls.length > 0) ? product.image_urls[0] : (product.imageUrl || 'https://images.unsplash.com/photo-1523275335684-37898b6baf30?w=100&auto=format&fit=crop&q=80');
+                return (
+                  <div key={product.id} className="wishlist-item-card" style={{ display: 'flex', alignItems: 'center', gap: '1rem', padding: '0.75rem', border: '1px solid rgba(239, 68, 68, 0.2)', background: 'rgba(239, 68, 68, 0.03)' }}>
+                    <img src={displayImage} alt={product.name} className="wishlist-item-image" style={{ width: '50px', height: '50px' }} />
+                    <div className="wishlist-item-details" style={{ flexGrow: 1, textAlign: 'left' }}>
+                      <h4 className="wishlist-item-name" style={{ fontSize: '0.95rem', margin: 0 }}>{product.name}</h4>
+                      <span style={{ fontSize: '0.85rem', color: '#f87171', fontWeight: 700 }}>
+                        Current Stock: {product.stock}
+                      </span>
+                    </div>
+                    <button
+                      className="btn btn-secondary btn-sm"
+                      onClick={() => {
+                        setShowLowStockModal(false);
+                        handleEditProductClick(product);
+                      }}
+                    >
+                      Update Stock
+                    </button>
+                  </div>
+                );
+              })}
+            </div>
+
+            {/* Modal Footer */}
+            <div className="modal-actions" style={{ marginTop: '1.5rem' }}>
+              <button className="btn btn-secondary" onClick={() => setShowLowStockModal(false)}>
                 Close
               </button>
             </div>

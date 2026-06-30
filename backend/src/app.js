@@ -9,6 +9,7 @@ const analyticsRouter = require('./routes/analytics.routes')
 const reviewsRouter = require('./routes/reviews.routes')
 const wishlistRouter = require('./routes/wishlist.routes')
 const couponsRouter = require('./routes/coupons.routes')
+const profileRouter = require('./routes/profile.routes')
 const handleStripeWebhook = require('./controllers/webhook.controller')
 const { expireOrders } = require('./jobs/expireOrders.job')
 const cors = require('cors');
@@ -45,10 +46,14 @@ app.use('/api/wishlist', wishlistRouter);
 
 // for coupon code
 app.use('/api/coupons/', couponsRouter)
+
+// for user profile
+app.use('/api/profile', profileRouter) ;
+
 // Schedule expireOrders job to run every 1 minute
 cron.schedule('* * * * *', async () => {
   try {
-    await expireOrders()
+    await expireOrders();
   } catch (err) {
     console.error('Cron job error:', err)
   }

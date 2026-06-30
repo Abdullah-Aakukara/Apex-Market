@@ -16,7 +16,7 @@ const applyCoupon = async (req, res) => {
                 if(!coupon || (coupon.minOrderAmount > cartTotal) || !coupon.isActive || !(coupon.expiresAt > Date.now()) || !(coupon.usedCount < coupon.usageLimit)) {
                     return res.status(403).json({ error: "Provided Coupon Code isn\'t applicable"})
                 }
-
+                
                 // calculate discount
                 const discountedAmount = (cartTotal * coupon.value) / 100 
                 

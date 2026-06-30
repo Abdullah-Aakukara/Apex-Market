@@ -111,8 +111,17 @@ export const AuthProvider = ({ children }) => {
     });
   };
 
+  const updateUserFields = (fields) => {
+    setUser((prevUser) => {
+      if (!prevUser) return null;
+      const updatedUser = { ...prevUser, ...fields };
+      localStorage.setItem('user', JSON.stringify(updatedUser));
+      return updatedUser;
+    });
+  };
+
   return (
-    <AuthContext.Provider value={{ user, loading, login, logout, selectActiveRole }}>
+    <AuthContext.Provider value={{ user, loading, login, logout, selectActiveRole, updateUserFields }}>
       {children}
     </AuthContext.Provider>
   );

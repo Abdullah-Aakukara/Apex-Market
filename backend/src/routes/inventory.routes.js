@@ -1,17 +1,11 @@
 const express = require('express')
-const multer = require('multer');
+const getImageParser = require('../utils/getImageParser')
 const {addProductRequestValidator} = require('../middlewares/validators.middleware');
 const authMiddleware = require('../middlewares/auth.middleware');
 const {addProduct, viewInventory, updateProduct, deleteOrRestoreProduct} = require('../controllers/inventory.controller');
 const router = express.Router();
 
-const storage = multer.memoryStorage();
-const upload = multer({
-    storage: storage, 
-    limits: {
-        fileSize: 5 * 1024 * 1024 // max 5 MB
-    }
-}) 
+const upload = getImageParser();
 
 // Add a new product (requires auth so req.user.vendorId must be available)
 router.post('/products/add', authMiddleware, upload.array('imageFiles', 5), addProductRequestValidator, addProduct);

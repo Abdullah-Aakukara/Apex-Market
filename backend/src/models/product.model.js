@@ -45,7 +45,7 @@ module.exports = (sequelize) => {
         allowNull: false,
         defaultValue: true,
       },
-      lowStockAlertSent: {
+      low_stock_alert_sent: {
         type: DataTypes.BOOLEAN,
         allowNull: false,
         defaultValue: false

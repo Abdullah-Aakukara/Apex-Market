@@ -22,6 +22,15 @@ module.exports = (sequelize) => {
           isEmail: true,
         },
       },
+      phone: {
+        type: DataTypes.NUMBER,
+        allowNull: false, 
+        unique: true
+      },
+      avatarUrl: {
+        type: DataTypes.TEXT,
+        allowNull: false
+      },
       passwordHash: {
         type: DataTypes.STRING,
         allowNull: false,

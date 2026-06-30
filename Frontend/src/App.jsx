@@ -11,6 +11,7 @@ import CheckoutSuccess from './pages/CheckoutSuccess';
 import CheckoutFailure from './pages/CheckoutFailure';
 import StockConflict from './pages/StockConflict';
 import Orders from './pages/Orders';
+import Profile from './pages/Profile';
 // Protected Route Component: Restricts access to authenticated users only
 const ProtectedRoute = ({ children }) => {
   const { user, loading } = useAuth();
@@ -132,6 +133,14 @@ export default function App() {
             element={
               <ProtectedRoute>
                 <Orders />
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Profile />
               </ProtectedRoute>
             }
           />

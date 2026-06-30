@@ -373,3 +373,52 @@ export async function applyCouponCode(couponData) {
   return handleResponse(response);
 }
 
+/**
+ * Fetch current user profile
+ */
+export async function getUserProfile() {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/api/profile`, {
+    method: 'GET',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Update user profile details (Name, Phone, Avatar). Sends multipart/form-data.
+ * @param {FormData} formData
+ */
+export async function updateUserProfile(formData) {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/api/profile/update`, {
+    method: 'PUT',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+    },
+    body: formData,
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Change user password
+ * @param {Object} passwordData - { currentPassword, newPassword, confirmPassword }
+ */
+export async function changeUserPassword(passwordData) {
+  const token = localStorage.getItem('token');
+  const response = await fetch(`${API_BASE_URL}/api/profile/change-password`, {
+    method: 'PATCH',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(passwordData),
+  });
+  return handleResponse(response);
+}
+
+

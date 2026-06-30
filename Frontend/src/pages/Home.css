@@ -1367,6 +1367,56 @@
   color: var(--text-main);
 }
 
+/* Blinking Red Bell Icon */
+.low-stock-bell-btn {
+  background: rgba(239, 68, 68, 0.15);
+  border: 1px solid rgba(239, 68, 68, 0.4);
+  color: #f87171;
+  padding: 0.45rem 0.85rem;
+  font-size: 1.1rem;
+  border-radius: 6px;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  gap: 0.35rem;
+  position: relative;
+  transition: all var(--transition-fast, 0.2s);
+}
+
+.low-stock-bell-btn:hover {
+  background: rgba(239, 68, 68, 0.25);
+  border-color: #ef4444;
+  transform: scale(1.05);
+}
+
+.bell-badge {
+  background: #ef4444;
+  color: white;
+  font-size: 0.75rem;
+  font-weight: 700;
+  padding: 0.1rem 0.35rem;
+  border-radius: 10px;
+  line-height: 1;
+}
+
+.blinking-red {
+  animation: blinkRed 1.2s infinite alternate;
+}
+
+@keyframes blinkRed {
+  0% {
+    box-shadow: 0 0 4px rgba(239, 68, 68, 0.3);
+    border-color: rgba(239, 68, 68, 0.4);
+    background-color: rgba(239, 68, 68, 0.15);
+  }
+  100% {
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.75);
+    border-color: #ef4444;
+    background-color: rgba(239, 68, 68, 0.35);
+  }
+}
+
+
 
 
 
