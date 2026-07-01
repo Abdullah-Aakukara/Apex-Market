@@ -2,9 +2,19 @@ const {User} = require('../models');
 const bcrypt = require('bcrypt')
 
 // fetches user profile
-const fetchUserProfile = async (userId) => {
-    const user = await User.findByPk(userId, {attributes: ['name', 'email', 'phone', 'avatarUrl']});
-    return user
+const fetchUserProfile = async (userId) => { 
+    try {
+        const user = await User.findByPk(userId, {attributes: ['name', 'email', 'phone', 'avatarUrl']});
+        if (!user) {
+            const error = new Error('User not found')
+            error.type = "USER NOT FOUND"
+            throw error
+        }
+        return user
+    } catch (err) {
+        console.log(err)
+        throw err
+    }
 }
 
 // updates user profile in DB
