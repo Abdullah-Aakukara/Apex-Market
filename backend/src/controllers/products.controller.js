@@ -1,5 +1,5 @@
 const {Product, Reviews, User} = require('../models')
-const {Op} = require('sequelize')
+const {Op, Sequelize} = require('sequelize')
 
 const getAllproducts = async (req, res) => {
     try{
@@ -18,7 +18,38 @@ const getAllproducts = async (req, res) => {
             where.categoryId = category 
         }
         if (query) {
-            where[Op.or] = [{name: { [Op.iLike]: `%${query}%`}}, {description: { [Op.iLike]: `%${query}%`}}]
+            const normalizedQuery = query.toLowerCase().replace(/[^a-z0-9]/g, ''); //trims every punctuation marks from the query
+            if (normalizedQuery) {
+                where[Op.or] = [
+                Sequelize.where(
+                    Sequelize.fn(
+                        'regexp_replace',
+                        Sequelize.fn('lower', Sequelize.col('name')),
+                        '[^a-z0-9]',
+                        '',
+                        'g'
+                    ), 
+                    {
+                        [Op.like]: `%${normalizedQuery}%`
+                    }
+                ), 
+
+                Sequelize.where(
+                    Sequelize.fn(
+                        'regexp_replace',
+                        Sequelize.fn('lower', Sequelize.col('description')),
+                        '[^a-z0-9]',
+                        '',
+                        'g'
+                    ), 
+                    {
+                        [Op.like] : `%${normalizedQuery}%`
+                    }
+                )
+            ]
+            }
+
+
         }
 
         // for sorting 
