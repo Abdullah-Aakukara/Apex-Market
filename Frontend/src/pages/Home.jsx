@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, useSearchParams } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { addProduct, getProducts, getVendorOrders, getVendorInventory, updateVendorProduct, removeOrRestoreVendorProduct, updateVendorOrderStatus, getWishlist, addWishlistItem, removeWishlistItem } from '../utils/api';
 import './Home.css';
@@ -22,6 +22,11 @@ const INITIAL_FORM = {
 export default function Home() {
   const { user, logout } = useAuth();
   const navigate = useNavigate();
+  const [searchParams, setSearchParams] = useSearchParams();
+  const initialQuery = searchParams.get('query') || '';
+
+  const [searchQuery, setSearchQuery] = useState(initialQuery);
+  const [activeSearchQuery, setActiveSearchQuery] = useState(initialQuery);
 
   const [showModal, setShowModal] = useState(false);
   const [formData, setFormData] = useState(INITIAL_FORM);
@@ -74,38 +79,25 @@ export default function Home() {
   const [wishlistLoading, setWishlistLoading] = useState(false);
 
   // Fetch products function
-  const fetchProducts = async (categoryVal, sortVal, pageVal) => {
+  const fetchProducts = async (categoryVal, sortVal, pageVal, queryVal = '') => {
     try {
       setProductsLoading(true);
       setProductsError('');
       
-      let response;
-      if (!categoryVal) {
-        // Light weight GET api/products (without any query parameters)
-        response = await getProducts();
-      } else {
-        // Specific Category with or without Sort Filter, paginated
-        const params = {
-          category: categoryVal,
-          page: pageVal,
-          limit: 10,
-        };
-        if (sortVal) {
-          params.sortBy = sortVal;
-        }
-        response = await getProducts(params);
-      }
+      const params = {
+        page: pageVal,
+        limit: 12,
+      };
+      if (categoryVal) params.category = categoryVal;
+      if (sortVal) params.sortBy = sortVal;
+      if (queryVal) params.query = queryVal;
+
+      const response = await getProducts(params);
 
       if (response) {
-        if (categoryVal) {
-          setProducts(response.products || []);
-          setTotalPages(Math.ceil((response.metadata?.totalItems || 0) / 10));
-          setCurrentPage(parseInt(response.metadata?.currentPage || pageVal));
-        } else {
-          setProducts(response.products || []);
-          setTotalPages(1);
-          setCurrentPage(1);
-        }
+        setProducts(response.products || []);
+        setTotalPages(response.metadata?.totalPages || 1);
+        setCurrentPage(response.metadata?.currentPage || pageVal);
       }
     } catch (err) {
       console.error(err);
@@ -423,15 +415,35 @@ export default function Home() {
 
   useEffect(() => {
     if (user && user.role === 'customer') {
-      fetchProducts(selectedCategory, sortBy, currentPage);
+      const q = searchParams.get('query') || '';
+      setSearchQuery(q);
+      setActiveSearchQuery(q);
+      fetchProducts(selectedCategory, sortBy, currentPage, q);
       fetchWishlist();
     }
-  }, [user, user?.role]);
+  }, [user, user?.role, selectedCategory, sortBy, currentPage, searchParams]);
 
   const handlePageChange = (newPage) => {
     if (newPage < 1 || newPage > totalPages) return;
     setCurrentPage(newPage);
-    fetchProducts(selectedCategory, sortBy, newPage);
+    fetchProducts(selectedCategory, sortBy, newPage, activeSearchQuery);
+  };
+
+  const handleSearch = (e) => {
+    e.preventDefault();
+    setCurrentPage(1);
+    const q = searchQuery.trim();
+    if (q) {
+      setSearchParams({ query: q });
+    } else {
+      setSearchParams({});
+    }
+  };
+
+  const handleClearSearch = () => {
+    setSearchQuery('');
+    setCurrentPage(1);
+    setSearchParams({});
   };
 
   if (!user) {
@@ -1106,6 +1118,30 @@ export default function Home() {
         ) : (
           /* ── Customer Dashboard ─────────────────────────────────────── */
           <>
+            {/* Search Bar */}
+            <div className="search-bar-wrapper glass-panel">
+              <form onSubmit={handleSearch} className="search-form">
+                <div className="search-input-container">
+                  <span className="search-icon">🔍</span>
+                  <input
+                    type="text"
+                    className="search-input"
+                    placeholder="Search for products, categories, or keywords..."
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                  />
+                  {activeSearchQuery && (
+                    <button type="button" className="clear-search-btn" onClick={handleClearSearch} aria-label="Clear search">
+                      ✕
+                    </button>
+                  )}
+                </div>
+                <button type="submit" className="btn btn-primary search-submit-btn">
+                  Search
+                </button>
+              </form>
+            </div>
+
             {/* Controls Bar: Category dropdown and price filters */}
             <div className="marketplace-controls-wrapper">
               <div className="form-group category-dropdown-group">
@@ -1119,7 +1155,7 @@ export default function Home() {
                     const categoryId = e.target.value;
                     setSelectedCategory(categoryId);
                     setCurrentPage(1);
-                    fetchProducts(categoryId, sortBy, 1);
+                    fetchProducts(categoryId, sortBy, 1, activeSearchQuery);
                   }}
                 >
                   <option value="">All Categories</option>
@@ -1134,29 +1170,25 @@ export default function Home() {
                 <div className="sort-buttons">
                   <button
                     onClick={() => {
-                      if (!selectedCategory) return;
                       const newSort = sortBy === 'price_asc' ? '' : 'price_asc';
                       setSortBy(newSort);
                       setCurrentPage(1);
-                      fetchProducts(selectedCategory, newSort, 1);
+                      fetchProducts(selectedCategory, newSort, 1, activeSearchQuery);
                     }}
-                    className={`btn btn-secondary sort-btn ${sortBy === 'price_asc' ? 'active' : ''} ${!selectedCategory ? 'disabled' : ''}`}
-                    disabled={!selectedCategory}
-                    title={!selectedCategory ? "Select a category first to sort" : "Sort lowest to highest"}
+                    className={`btn btn-secondary sort-btn ${sortBy === 'price_asc' ? 'active' : ''}`}
+                    title="Sort lowest to highest"
                   >
                     Lowest Price
                   </button>
                   <button
                     onClick={() => {
-                      if (!selectedCategory) return;
                       const newSort = sortBy === 'price_desc' ? '' : 'price_desc';
                       setSortBy(newSort);
                       setCurrentPage(1);
-                      fetchProducts(selectedCategory, newSort, 1);
+                      fetchProducts(selectedCategory, newSort, 1, activeSearchQuery);
                     }}
-                    className={`btn btn-secondary sort-btn ${sortBy === 'price_desc' ? 'active' : ''} ${!selectedCategory ? 'disabled' : ''}`}
-                    disabled={!selectedCategory}
-                    title={!selectedCategory ? "Select a category first to sort" : "Sort highest to lowest"}
+                    className={`btn btn-secondary sort-btn ${sortBy === 'price_desc' ? 'active' : ''}`}
+                    title="Sort highest to lowest"
                   >
                     Highest Price
                   </button>
@@ -1228,8 +1260,8 @@ export default function Home() {
               )}
             </div>
 
-            {/* Pagination Controls — only shown if category is selected */}
-            {selectedCategory && totalPages > 1 && (
+            {/* Pagination Controls */}
+            {totalPages > 1 && (
               <div className="pagination-bar">
                 <button
                   onClick={() => handlePageChange(currentPage - 1)}

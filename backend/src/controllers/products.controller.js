@@ -1,70 +1,51 @@
 const {Product, Reviews, User} = require('../models')
+const {Op} = require('sequelize')
 
 const getAllproducts = async (req, res) => {
     try{
-        const {category, page, limit} = req.query;
-
-        // for sorted by price along with specific category & pagination
-        if (req.query.category && req.query.sortBy && req.query.page && req.query.limit) {
-            const direction = req.query.sortBy === 'price_asc' ? 'ASC' : 'DESC'; // for sorting/order 
-            const skip = (page - 1) * limit;
-            const {count, rows} = await Product.findAndCountAll({where: {
-                    isActive: true, 
-                    categoryId: category
-                }, 
-                    order: [['price', direction]], // sort by price - lowest to highest 
-                    offset: skip, 
-                    limit: limit 
-            })
-
-            const response = {
-                metadata : {
-                    totalItems: count,
-                    totalPages: count / limit,
-                    currentPage: page, 
-                },
-                products: rows
-            }
-
-            return res.status(200).json(response)
-        }
+        const {category, page = 1, limit = 36, sortBy, query} = req.query; 
+        const pageNum = parseInt(page, 10) || 1;
+        const limitNum = parseInt(limit, 10) || 12;
+        const skip = (pageNum - 1) * limitNum;
         
-        // for all products of specific category, along with pagination
-        if (req.query.category && req.query.page && req.query.limit) {
+        
+        // for all logical filter
+        const where = {
+            isActive: true
+        }
 
-            const skip = (page - 1) * limit;
-            const {count, rows} = await Product.findAndCountAll({where: {
-                    isActive: true, 
-                    categoryId: category
-                },  
-                    offset: skip, 
-                    limit: limit 
-            })
+        if (category) {
+            where.categoryId = category 
+        }
+        if (query) {
+            where[Op.or] = [{name: { [Op.iLike]: `%${query}%`}}, {description: { [Op.iLike]: `%${query}%`}}]
+        }
 
-            const response = {
+        // for sorting 
+        const order = []
+
+        if (sortBy) {
+            const direction = sortBy === 'price_asc' ? 'ASC' : 'DESC'; // for sorting/order
+            order.push(['price', direction]) 
+        }
+
+        const {count, rows} = await Product.findAndCountAll({ 
+            where, 
+            order, 
+            offset: skip, 
+            limit: limit  
+        })
+
+        const response = {
                 metadata : {
                     totalItems: count,
-                    totalPages: count / limit,
-                    currentPage: page, 
+                    totalPages: Math.ceil(count / limit),
+                    currentPage: parseInt(page, 10) 
                 },
                 products: rows
             }
 
-            return res.status(200).json(response);
-        }
-
-        // for All Products with all categories.
-        const products = await Product.findAll({
-            where: {
-                isActive: true,
-            }, 
-            attributes: ['name', 'id', 'categoryId', 'price', 'image_urls', 'stock'],
-        })
-
-        res.status(200).json({
-            success: true,
-            products: products // arr of objects
-        })
+        res.status(200).json(response)
     } catch(err) {
         console.error(err)
         res.status(500).json({

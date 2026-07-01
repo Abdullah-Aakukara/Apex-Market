@@ -125,6 +125,7 @@ export async function getProducts(params = {}) {
   if (params.sortBy) url.searchParams.append('sortBy', params.sortBy);
   if (params.page) url.searchParams.append('page', params.page);
   if (params.limit) url.searchParams.append('limit', params.limit);
+  if (params.query) url.searchParams.append('query', params.query);
 
   const response = await fetch(url.toString(), {
     method: 'GET',
