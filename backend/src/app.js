@@ -18,7 +18,9 @@ const app = express();
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json'}), handleStripeWebhook);
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+  origin: ['https://apex-market.pages.dev', 'http://localhost:5173', 'http://localhost:5174']
+}));
 
 // route all requests to authRouter which starts from /auth
 app.use('/auth', authRouter);
