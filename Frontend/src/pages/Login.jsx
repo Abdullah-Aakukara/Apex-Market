@@ -55,7 +55,7 @@ export default function Login() {
         password: formData.password,
       });
 
-      const token = response.token;
+      const token = response.accessToken;
 
       if (!token) {
         throw new Error('Authentication token not received from server.');

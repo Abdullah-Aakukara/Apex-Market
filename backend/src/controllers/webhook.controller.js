@@ -53,7 +53,7 @@ const handleStripeWebhook = async (req, res) => {
         console.log(`💳 Payment entry created: ${userPayment.id}`);
 
         // send order confirmation email to customer
-        await sendOrderConfirmationEmail(userEmail, orderId, amount)
+        //await sendOrderConfirmationEmail(userEmail, orderId, amount)
 
         // send email to vendors, regarding new order arrived 
         // first clean up the array, removing duplicate ids
@@ -63,12 +63,12 @@ const handleStripeWebhook = async (req, res) => {
             for (const vendorId of vendorIds) {
               const vendor = await Vendor.findByPk(vendorId, {attributes: ['userId']})
               const vendorDetail = await User.findByPk(vendor.userID, {attributes: ['name', 'email']})
-              await sendOrderArrivedEmail(vendorDetail.email, vendorDetail.name);
+              //await sendOrderArrivedEmail(vendorDetail.email, vendorDetail.name);
 
               // send inventory alert email to vendors whose id gets matched with inventoryAlert arr
               for (const inventory of inventoryAlert) {
                 if (inventory.vendorId === vendorId) {
-                  await sendLowInventoryEmail(vendorDetail.email, inventory.productId, inventory.stock, vendorDetail.name)
+                  //await sendLowInventoryEmail(vendorDetail.email, inventory.productId, inventory.stock, vendorDetail.name)
                 }
               }
             }

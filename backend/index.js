@@ -1,5 +1,5 @@
 const app = require('./src/app.js')
-const db = require('./src/models/index.js');
+const db = require('./src/db/dbConfig.js');
 const path = require('path')
 require('dotenv').config({ path: path.resolve(__dirname, './.env') });
 
@@ -7,10 +7,10 @@ const PORT = process.env.PORT
 
 async function start() {
   try {
-    await db.sequelize.authenticate();
+    await db.authenticate();
     console.log('Database connected successfully.');
 
-    await db.sequelize.sync();
+    await db.sync();
 
     app.listen(PORT, () => {
       console.log("Server got started on PORT: ", PORT)

@@ -1,5 +1,4 @@
-
-// Importing Sequelize constructor from the sequelize package.
+// Importing Sequelize class from the sequelize package.
 const { Sequelize } = require('sequelize');
 const path = require('path');
 require('dotenv').config({path: path.resolve(__dirname, '../../.env')})
@@ -33,20 +32,7 @@ const sequelize = new Sequelize(
   }
 );
 
-
-// Asynchronous function to establish a connection to the database and synchronize the models.
-const connectDB = async () => {
-  try {
-    // Synchronizes all defined models to the database.
-    // 'alter: false' ensures the database should not be altered.
-    await sequelize.sync({ alter: false });
-    console.log('Connection has been established successfully.'); // Success message
-  } catch (error) {
-    console.error('Unable to connect to the database:', error); // Error handling
-  }
-};
-
-// Exporting the sequelize instance and connectDB function to be used in other parts of the application.
-module.exports = { sequelize, connectDB };
+// Exporting the sequelize instance to be used in other parts of the application.
+module.exports =  sequelize; 
                 
                 

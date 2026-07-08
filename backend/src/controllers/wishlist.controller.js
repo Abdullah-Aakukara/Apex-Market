@@ -39,7 +39,7 @@ const getAllWishes = async (req, res) => {
     const user_id = req.user.userId;
     const wishes = await Wishlist.findAll({
         where: { user_id }
-    })
+    })  
 
     let wishedItems = []
 

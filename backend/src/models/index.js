@@ -1,4 +1,4 @@
-const { sequelize } = require('../db/dbConfig');
+const sequelize = require('../db/dbConfig');
 
 const User = require('./user.model')(sequelize);
 const Vendor = require('./vendor.model')(sequelize);
@@ -13,6 +13,7 @@ const Wishlist = require('./wishlist.model')(sequelize);
 const Reviews = require('./reviews.model')(sequelize);
 const Coupon = require('./coupon.model')(sequelize);
 const CouponUsage = require('./couponUsage.model')(sequelize);
+const RefreshToken = require('./refreshToken.model')(sequelize)
 
 /* Associations */
 
@@ -68,6 +69,9 @@ Reviews.belongsTo(Product, {foreignKey: 'product_id', as: 'product'});
 User.hasOne(CouponUsage, {foreignKey: 'userId', as: 'couponUsage'});
 CouponUsage.belongsTo(User, {foreignKey: 'userId', as: 'user'});
 
+// User - Refresh Token
+RefreshToken.belongsTo(User, { foreignKey: 'user_id', as: 'user'});
+
 const db = {
   sequelize,
   User,
@@ -82,7 +86,8 @@ const db = {
   Reviews, 
   Wishlist,
   Coupon, 
-  CouponUsage
+  CouponUsage,
+  RefreshToken
 };
 
 module.exports = db;

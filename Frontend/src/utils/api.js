@@ -1,5 +1,15 @@
 const API_BASE_URL = process.env.NODE_ENV === 'production' ? 'https://apex-market-bchl.onrender.com': 'http://localhost:3000';
 
+let accessToken = '';
+
+export function setAccessToken(token) {
+  accessToken = token;
+}
+
+export function getAccessToken() {
+  return accessToken;
+}
+
 /**
  * Helper to handle fetch responses and extract JSON or error messages.
  */
@@ -9,8 +19,6 @@ async function handleResponse(response) {
 
   if (!response.ok) {
     if (response.status === 401) {
-      localStorage.removeItem('user');
-      localStorage.removeItem('token');
       window.dispatchEvent(new CustomEvent('auth-unauthorized'));
     }
     // If backend returns an error message, use that, otherwise default
@@ -65,6 +73,37 @@ export async function loginUser(credentials) {
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(credentials),
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Fetch a new access token using the HttpOnly refresh token cookie
+ */
+export async function refreshAccessToken() {
+  const response = await fetch(`${API_BASE_URL}/auth/refresh`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
+  });
+  return handleResponse(response);
+}
+
+/**
+ * Revoke session and log out the user on backend
+ */
+export async function logoutUser() {
+  const token = getAccessToken();
+  const response = await fetch(`${API_BASE_URL}/auth/logout`, {
+    method: 'POST',
+    headers: {
+      'Authorization': `Bearer ${token}`,
+      'Content-Type': 'application/json',
+    },
+    credentials: 'include',
   });
   return handleResponse(response);
 }
@@ -100,7 +139,7 @@ export function decodeToken(token) {
  * @returns {Promise<Object>} The created product details.
  */
 export async function addProduct(formData) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/vendor/products/add`, {
     method: 'POST',
     headers: {
@@ -118,7 +157,7 @@ export async function addProduct(formData) {
  * @param {Object} [params] - Optional parameters { category, sortBy, page, limit }
  */
 export async function getProducts(params = {}) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const url = new URL(`${API_BASE_URL}/api/products`);
   
   if (params.category) url.searchParams.append('category', params.category);
@@ -142,7 +181,7 @@ export async function getProducts(params = {}) {
  * @param {string} id - Product ID
  */
 export async function getProductById(id) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/products/${id}`, {
     method: 'GET',
     headers: {
@@ -158,7 +197,7 @@ export async function getProductById(id) {
  * @param {Object} orderData
  */
 export async function checkoutOrder(orderData) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const decoded = decodeToken(token);
   const userId = decoded?.userId;
   
@@ -182,7 +221,7 @@ export async function checkoutOrder(orderData) {
  * Fetch all orders for the logged-in customer based on their JWT token
  */
 export async function getOrders() {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/orders`, {
     method: 'GET',
     headers: {
@@ -198,7 +237,7 @@ export async function getOrders() {
  * @param {string} id - Order ID
  */
 export async function getOrderById(id) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/orders/${id}`, {
     method: 'GET',
     headers: {
@@ -213,7 +252,7 @@ export async function getOrderById(id) {
  * Fetch all orders that the logged-in vendor needs to process
  */
 export async function getVendorOrders() {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/vendor/orders`, {
     method: 'GET',
     headers: {
@@ -228,7 +267,7 @@ export async function getVendorOrders() {
  * Fetch all inventory products for the logged-in vendor
  */
 export async function getVendorInventory() {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/vendor/products`, {
     method: 'GET',
     headers: {
@@ -244,7 +283,7 @@ export async function getVendorInventory() {
  * @param {FormData} formData
  */
 export async function updateVendorProduct(formData) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/vendor/products/update`, {
     method: 'PATCH',
     headers: {
@@ -264,7 +303,7 @@ export async function updateVendorProduct(formData) {
  * @param {number} [stock] 
  */
 export async function removeOrRestoreVendorProduct(productId, isActive, stock) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/vendor/products/remove`, {
     method: 'DELETE',
     headers: {
@@ -281,7 +320,7 @@ export async function removeOrRestoreVendorProduct(productId, isActive, stock) {
  * @param {string} orderId 
  */
 export async function updateVendorOrderStatus(orderId) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/vendor/orders/${orderId}/status`, {
     method: 'PATCH',
     headers: {
@@ -298,7 +337,7 @@ export async function updateVendorOrderStatus(orderId) {
  * @param {Object} reviewData - { productRating: number, reviewComment: string }
  */
 export async function submitProductReview(productId, reviewData) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/reviews/product/${productId}`, {
     method: 'POST',
     headers: {
@@ -315,7 +354,7 @@ export async function submitProductReview(productId, reviewData) {
  * @param {string} productId
  */
 export async function addWishlistItem(productId) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/wishlist/add/${productId}`, {
     method: 'POST',
     headers: {
@@ -331,7 +370,7 @@ export async function addWishlistItem(productId) {
  * @param {string} productId
  */
 export async function removeWishlistItem(productId) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/wishlist/remove/${productId}`, {
     method: 'DELETE',
     headers: {
@@ -346,7 +385,7 @@ export async function removeWishlistItem(productId) {
  * Get all wishlisted products for the user
  */
 export async function getWishlist() {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/wishlist`, {
     method: 'GET',
     headers: {
@@ -362,7 +401,7 @@ export async function getWishlist() {
  * @param {Object} couponData - { couponCode: string, cartTotal: number }
  */
 export async function applyCouponCode(couponData) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/coupons/apply`, {
     method: 'POST',
     headers: {
@@ -378,7 +417,7 @@ export async function applyCouponCode(couponData) {
  * Fetch current user profile
  */
 export async function getUserProfile() {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/profile`, {
     method: 'GET',
     headers: {
@@ -394,7 +433,7 @@ export async function getUserProfile() {
  * @param {FormData} formData
  */
 export async function updateUserProfile(formData) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/profile/update`, {
     method: 'PUT',
     headers: {
@@ -410,7 +449,7 @@ export async function updateUserProfile(formData) {
  * @param {Object} passwordData - { currentPassword, newPassword, confirmPassword }
  */
 export async function changeUserPassword(passwordData) {
-  const token = localStorage.getItem('token');
+  const token = getAccessToken();
   const response = await fetch(`${API_BASE_URL}/api/profile/change-password`, {
     method: 'PATCH',
     headers: {

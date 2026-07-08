@@ -1,5 +1,6 @@
 const express = require('express')
 const cron = require('node-cron')
+const cookieParser = require('cookie-parser')
 const authRouter = require('./routes/auth.routes')
 const inventoryRouter = require('./routes/inventory.routes')
 const productsRouter = require('./routes/products.routes')
@@ -18,8 +19,10 @@ const app = express();
 app.post('/api/stripe/webhook', express.raw({ type: 'application/json'}), handleStripeWebhook);
 
 app.use(express.json());
+app.use(cookieParser());
 app.use(cors({
-  origin: ['https://apex-market.pages.dev', 'http://localhost:5173', 'http://localhost:5174']
+  origin: ['https://apex-market.pages.dev', 'http://localhost:5173', 'http://localhost:5174'], 
+  credentials: true
 }));
 
 // route all requests to authRouter which starts from /auth

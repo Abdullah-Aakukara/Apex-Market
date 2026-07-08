@@ -1,5 +1,5 @@
 import React, { createContext, useState, useEffect, useContext, useRef } from 'react';
-import { decodeToken } from '../utils/api';
+import { decodeToken, setAccessToken, refreshAccessToken, logoutUser } from '../utils/api';
 
 const AuthContext = createContext(null);
 
@@ -8,16 +8,78 @@ export const AuthProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const expirationTimeoutRef = useRef(null);
 
-  const logout = (isExpired = false) => {
-    setUser(null);
-    localStorage.removeItem('user');
-    localStorage.removeItem('token');
-    if (expirationTimeoutRef.current) {
-      clearTimeout(expirationTimeoutRef.current);
-      expirationTimeoutRef.current = null;
+  const logout = async (isExpired = false) => {
+    try {
+      await logoutUser();
+    } catch (err) {
+      console.error('Logout backend call failed:', err);
+    } finally {
+      setUser(null);
+      setAccessToken('');
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      if (expirationTimeoutRef.current) {
+        clearTimeout(expirationTimeoutRef.current);
+        expirationTimeoutRef.current = null;
+      }
+      if (isExpired) {
+        sessionStorage.setItem('session_expired_message', 'Your login session expired, log-in again.');
+      }
     }
-    if (isExpired) {
+  };
+
+  const silentRefresh = async () => {
+    try {
+      const res = await refreshAccessToken();
+      const token = res.newAccessToken;
+      setAccessToken(token);
+
+      const decoded = decodeToken(token);
+      if (decoded) {
+        let roles = decoded.userRole || [];
+        if (!Array.isArray(roles)) {
+          roles = [roles];
+        }
+
+        // Retrieve current stored user role if exists
+        const storedUserJson = localStorage.getItem('user');
+        let currentRole = null;
+        if (storedUserJson) {
+          try {
+            currentRole = JSON.parse(storedUserJson).role;
+          } catch (e) {}
+        }
+        const activeRole = currentRole || (roles.length === 1 ? roles[0] : null);
+
+        const userData = {
+          name: decoded.userName || decoded.userEmail.split('@')[0],
+          email: decoded.userEmail,
+          roles: roles,
+          role: activeRole,
+        };
+
+        setUser(userData);
+        localStorage.setItem('user', JSON.stringify(userData));
+        localStorage.setItem('refreshToken', 'HttpOnly');
+      }
+
+      scheduleTokenExpiration(token);
+      return token;
+    } catch (err) {
+      console.error('Silent refresh failed:', err);
+      // If refresh fails, we must force a logout and cleanup
+      setUser(null);
+      setAccessToken('');
+      localStorage.removeItem('user');
+      localStorage.removeItem('token');
+      localStorage.removeItem('refreshToken');
+      if (expirationTimeoutRef.current) {
+        clearTimeout(expirationTimeoutRef.current);
+        expirationTimeoutRef.current = null;
+      }
       sessionStorage.setItem('session_expired_message', 'Your login session expired, log-in again.');
+      throw err;
     }
   };
 
@@ -30,40 +92,51 @@ export const AuthProvider = ({ children }) => {
     const decoded = decodeToken(token);
     if (!decoded || !decoded.exp) return;
 
-    const remainingTime = decoded.exp * 1000 - Date.now();
+    // Refresh token exactly after it has expired (with a 1 second delay)
+    const remainingTime = decoded.exp * 1000 - Date.now() + 1000;
     if (remainingTime <= 0) {
-      logout(true);
+      silentRefresh().catch(() => {});
     } else {
       expirationTimeoutRef.current = setTimeout(() => {
-        logout(true);
+        silentRefresh().catch(() => {});
       }, remainingTime);
     }
   };
 
   useEffect(() => {
-    // Check if user credentials and token are stored in localStorage
-    const storedUser = localStorage.getItem('user');
-    const storedToken = localStorage.getItem('token');
+    const initAuth = async () => {
+      const storedUser = localStorage.getItem('user');
+      const hasRefreshToken = localStorage.getItem('refreshToken') === 'HttpOnly';
 
-    if (storedUser && storedToken) {
-      const decoded = decodeToken(storedToken);
-      const isExpired = decoded && decoded.exp ? decoded.exp * 1000 < Date.now() : true;
-      if (isExpired) {
-        logout(true);
-      } else {
+      if (hasRefreshToken && storedUser) {
         try {
           setUser(JSON.parse(storedUser));
-          scheduleTokenExpiration(storedToken);
+          await silentRefresh();
         } catch (error) {
-          console.error('Failed to parse stored user:', error);
-          logout(true);
+          console.error('Initial silent refresh failed:', error);
+          // Handled inside silentRefresh catch, but ensure loading is false
         }
+      } else {
+        setUser(null);
+        setAccessToken('');
+        localStorage.removeItem('user');
+        localStorage.removeItem('token');
+        localStorage.removeItem('refreshToken');
       }
-    }
-    setLoading(false);
+      setLoading(false);
+    };
 
-    const handleUnauthorized = () => {
-      logout(true);
+    initAuth();
+
+    const handleUnauthorized = async () => {
+      const hasRefreshToken = localStorage.getItem('refreshToken') === 'HttpOnly';
+      if (hasRefreshToken) {
+        try {
+          await silentRefresh();
+          return;
+        } catch (e) {}
+      }
+      await logout(true);
     };
     window.addEventListener('auth-unauthorized', handleUnauthorized);
 
@@ -96,7 +169,8 @@ export const AuthProvider = ({ children }) => {
 
     setUser(userData);
     localStorage.setItem('user', JSON.stringify(userData));
-    localStorage.setItem('token', token);
+    localStorage.setItem('refreshToken', 'HttpOnly');
+    setAccessToken(token);
     
     // Schedule expiration
     scheduleTokenExpiration(token);
@@ -134,4 +208,3 @@ export const useAuth = () => {
   }
   return context;
 };
-
