@@ -10,7 +10,7 @@ const verifyOtp = require('../middlewares/otpVerification.middleware')
 const router = express.Router();
 
 router.post('/request-otp', registerRequestValidator, requestOtp);
-router.post('/register', registerRequestValidator, registerUser);
+router.post('/register', verifyOtp, registerUser);
 router.post('/login', loginRequestValidator, loginUser);
 router.post('/refresh', getNewAccessToken) // for getting new access token
 router.post('/logout', logoutUser)
