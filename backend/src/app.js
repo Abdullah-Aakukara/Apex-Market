@@ -21,7 +21,7 @@ app.post('/api/stripe/webhook', express.raw({ type: 'application/json'}), handle
 app.use(express.json());
 app.use(cookieParser());
 app.use(cors({
-  origin: ['https://apex-market.pages.dev', 'http://localhost:5173', 'http://localhost:5174'], 
+  origin: ['https://apex-market.pages.dev', 'http://localhost:5173', 'http://localhost:5175'], 
   credentials: true
 }));
 

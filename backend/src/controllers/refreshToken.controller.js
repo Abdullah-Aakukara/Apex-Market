@@ -28,21 +28,29 @@ const getNewAccessToken = async (req, res) => {
         attributes: ['id', 'email', 'role', 'name']
     })
 
-    if (user.role.includes('vendor')) {
+    const userJson = user.toJSON();
+
+    if (userJson.role.includes('vendor')) {
         const vendor = await Vendor.findOne({
             where: {
-                userId: user.id
+                userId: userJson.id
             }, 
             attributes: ['id']
         })
 
         payload = {
-        ... user, 
-        vendorId: vendor.id
+            userEmail: userJson.email,
+            userId: userJson.id,
+            userRole: userJson.role,
+            userName: userJson.name,
+            vendorId: vendor.id
         }
     } else {
         payload = {
-        ... user
+            userEmail: userJson.email,
+            userId: userJson.id,
+            userRole: userJson.role,
+            userName: userJson.name
         }
     }
   

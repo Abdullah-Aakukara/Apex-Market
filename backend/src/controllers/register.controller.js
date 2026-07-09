@@ -66,7 +66,7 @@ const registerUser = async (req, res) => {
             })
 
             // send post registeration email
-                await sendWelcomeEmail(email);
+                //await sendWelcomeEmail(email);
 
             res.status(201).json({
                 message: "User successfully registered!",

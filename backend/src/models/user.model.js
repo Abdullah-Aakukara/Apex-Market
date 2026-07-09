@@ -24,12 +24,12 @@ module.exports = (sequelize) => {
       },
       phone: {
         type: DataTypes.NUMBER,
-        allowNull: false, 
+        allowNull: true, 
         unique: true
       },
       avatarUrl: {
         type: DataTypes.TEXT,
-        allowNull: false
+        allowNull: true
       },
       passwordHash: {
         type: DataTypes.STRING,
