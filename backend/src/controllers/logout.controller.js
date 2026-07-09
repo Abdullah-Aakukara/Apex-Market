@@ -1,7 +1,5 @@
-const { where } = require('sequelize')
 const {RefreshToken} = require('../models')
 const { hashToken } = require('../utils/tokens')
-const { path } = require('../app')
 const logoutUser = async (req, res) => {
     const token = req.cookies.refreshToken
   
@@ -13,7 +11,11 @@ const logoutUser = async (req, res) => {
         })
     }
 
-    res.clearCookie('refreshToken', { path: '/auth'});
+    res.clearCookie('refreshToken', { 
+        path: '/auth', 
+        secure: process.env.NODE_ENV === 'production',
+        sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax'
+    })
     res.status(200).json({success: true})
 } 
 

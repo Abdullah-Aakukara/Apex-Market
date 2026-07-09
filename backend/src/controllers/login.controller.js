@@ -66,7 +66,7 @@ const loginUser = async (req, res) => {
         res.cookie('refreshToken', refreshToken, {
             httpOnly: true, 
             secure: process.env.NODE_ENV === 'production', // enforce sent over HTTPS in production,
-            sameSite: true, 
+            sameSite: process.env.NODE_ENV === 'production' ? 'none' : 'lax', 
             path: '/auth', 
             maxAge: 30 * 24 * 60 * 60 * 1000
         })
