@@ -109,32 +109,20 @@ export default function Register() {
     }
 
     try {
-      /* Commented out OTP Request Flow:
       // First request OTP from backend
       const result = await requestOtp(payload);
       console.log('OTP Request Response:', result);
       setSuccess(`YOUR OTP is sent on ${formData.email}`);
       setShowOtpScreen(true);
       setOtpError('');
-      */
-
-      // Direct registration call instead of requesting OTP
-      const result = await registerUser(payload);
-      console.log('Registration Response:', result);
-      setSuccess('Account created successfully! Redirecting to login...');
-      
-      setTimeout(() => {
-        navigate('/login');
-      }, 2000);
     } catch (err) {
-      console.error('Registration error:', err);
-      setError(err.message || 'Registration failed. Please try again.');
+      console.error('OTP request error:', err);
+      setError(err.message || 'Failed to send OTP code. Please check your details.');
     } finally {
       setLoading(false);
     }
   };
 
-  /* Commented out OTP Verify and Resend handlers:
   const handleOtpVerifyAndSubmit = async (e) => {
     e.preventDefault();
     if (!otpCode || otpCode.trim().length === 0) {
@@ -209,7 +197,6 @@ export default function Register() {
       setOtpLoading(false);
     }
   };
-  */
 
   return (
     <div className="center-container">
@@ -387,7 +374,7 @@ export default function Register() {
         </div>
       </div>
 
-      {/* ── OTP Verification Modal (Commented Out) ──
+      {/* ── OTP Verification Modal ─────────────────────────────────────────── */}
       {showOtpScreen && (
         <div className="otp-modal-overlay" onClick={() => !otpLoading && setShowOtpScreen(false)} role="dialog" aria-modal="true" aria-labelledby="otp-modal-title">
           <div className="otp-modal-panel glass-panel" onClick={e => e.stopPropagation()}>
@@ -445,7 +432,6 @@ export default function Register() {
           </div>
         </div>
       )}
-      */}
     </div>
   );
 }

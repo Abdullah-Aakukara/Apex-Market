@@ -1,4 +1,4 @@
-const API_BASE_URL = process.env.NODE_ENV === 'production' ? 'https://apex-market-bchl.onrender.com': 'http://localhost:3000';
+const API_BASE_URL = "http://74.208.194.227"
 
 let accessToken = '';
 
